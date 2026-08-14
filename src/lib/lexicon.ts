@@ -1,29 +1,34 @@
 /**
  * 词库匹配模块
- * 加载情感词库JSON，分析文本中的情绪词、填充词、犹豫词
+ * 加载情感词库 JSON，分析文本中的情绪词、填充词、犹豫词。
  */
-
-const fs = require('fs');
-const path = require('path');
-
-let lexiconData = null;
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import type {
+  AnalysisResult,
+  EmotionLexicon,
+  EmotionWordHit,
+  Suggestion,
+  VagueWordHit,
+  WordHit,
+} from '../shared/types';
 
 // 填充词列表（语气词/口头禅）
-const FILLER_WORDS = [
+const FILLER_WORDS: readonly string[] = [
   '嗯', '啊', '呃', '额', '那个', '就是', '然后',
   '这个', '对吧', '是吧', '你知道', '怎么说呢',
-  '反正', '基本上', '总之', '所以说'
+  '反正', '基本上', '总之', '所以说',
 ];
 
 // 犹豫词列表（弱化表达）
-const HEDGE_WORDS = [
+const HEDGE_WORDS: readonly string[] = [
   '可能', '也许', '大概', '应该', '我觉得', '好像',
   '似乎', '或许', '不一定', '差不多', '算是',
-  '某种程度上', '一般来说', '感觉'
+  '某种程度上', '一般来说', '感觉',
 ];
 
 // 笼统词 → 精准替代映射
-const VAGUE_TO_PRECISE = {
+const VAGUE_TO_PRECISE: Readonly<Record<string, readonly string[]>> = {
   '开心': ['欣喜', '雀跃', '兴奋', '欣慰', '畅快', '满足'],
   '难过': ['心酸', '失落', '委屈', '心疼', '沮丧', '低落'],
   '害怕': ['恐惧', '焦虑', '不安', '慌张', '胆怯', '忐忑'],
@@ -43,19 +48,33 @@ const VAGUE_TO_PRECISE = {
   '做': ['执行', '落实', '推进', '完成', '实施', '操作'],
   '看': ['审视', '观察', '注视', '打量', '端详', '凝视'],
   '说': ['表达', '阐述', '强调', '指出', '坦言', '声明'],
-  '想想': ['反思', '回顾', '审视', '复盘', '琢磨', '斟酌']
+  '想想': ['反思', '回顾', '审视', '复盘', '琢磨', '斟酌'],
 };
+
+let lexiconData: EmotionLexicon = { emotions: {} };
+
+/** 校验 JSON 解析结果是否满足 EmotionLexicon 形状（轻量运行时校验） */
+function isEmotionLexicon(value: unknown): value is EmotionLexicon {
+  if (typeof value !== 'object' || value === null) return false;
+  const emotions = (value as { emotions?: unknown }).emotions;
+  return typeof emotions === 'object' && emotions !== null;
+}
 
 /**
  * 加载词库
  */
-function loadLexicon() {
+export function loadLexicon(): void {
   const lexiconPath = path.join(__dirname, '..', 'data', 'emotion-lexicon.json');
 
-  if (fs.existsSync(lexiconPath)) {
-    const raw = fs.readFileSync(lexiconPath, 'utf-8');
-    lexiconData = JSON.parse(raw);
-    console.log(`[词库] 加载完成，共 ${Object.keys(lexiconData.emotions || {}).length} 个情绪词`);
+  if (existsSync(lexiconPath)) {
+    const raw: unknown = JSON.parse(readFileSync(lexiconPath, 'utf-8'));
+    if (isEmotionLexicon(raw)) {
+      lexiconData = raw;
+      console.log(`[词库] 加载完成，共 ${Object.keys(raw.emotions).length} 个情绪词`);
+    } else {
+      console.warn('[词库] emotion-lexicon.json 格式不正确，使用内置词表');
+      lexiconData = { emotions: {} };
+    }
   } else {
     console.warn('[词库] emotion-lexicon.json 未找到，使用内置词表');
     lexiconData = { emotions: {} };
@@ -65,17 +84,17 @@ function loadLexicon() {
 /**
  * 简单中文分词（基于最大正向匹配 + 词表）
  */
-function segmentText(text) {
-  const words = [];
+function segmentText(text: string): string[] {
+  const words: string[] = [];
   let i = 0;
   const maxLen = 6;
 
   // 构建词表用于匹配
-  const dict = new Set([
+  const dict = new Set<string>([
     ...FILLER_WORDS,
     ...HEDGE_WORDS,
     ...Object.keys(VAGUE_TO_PRECISE),
-    ...Object.keys(lexiconData.emotions || {})
+    ...Object.keys(lexiconData.emotions),
   ]);
 
   while (i < text.length) {
@@ -91,7 +110,7 @@ function segmentText(text) {
     }
     if (!matched) {
       // 单字
-      words.push(text[i]);
+      words.push(text[i] ?? '');
       i++;
     }
   }
@@ -101,10 +120,8 @@ function segmentText(text) {
 
 /**
  * 分析文本
- * @param {string} text - 输入文本
- * @returns {Object} 分析结果
  */
-function analyzeText(text) {
+export function analyzeText(text: string): AnalysisResult | null {
   if (!text || !text.trim()) {
     return null;
   }
@@ -113,7 +130,7 @@ function analyzeText(text) {
   const totalWords = words.length;
 
   // 检测填充词
-  const fillers = [];
+  const fillers: WordHit[] = [];
   words.forEach((word, idx) => {
     if (FILLER_WORDS.includes(word)) {
       fillers.push({ word, position: idx });
@@ -121,7 +138,7 @@ function analyzeText(text) {
   });
 
   // 检测犹豫词
-  const hedges = [];
+  const hedges: WordHit[] = [];
   words.forEach((word, idx) => {
     if (HEDGE_WORDS.includes(word)) {
       hedges.push({ word, position: idx });
@@ -129,30 +146,22 @@ function analyzeText(text) {
   });
 
   // 检测笼统词
-  const vagueWords = [];
+  const vagueWords: VagueWordHit[] = [];
   words.forEach((word, idx) => {
-    if (VAGUE_TO_PRECISE[word]) {
-      vagueWords.push({
-        word,
-        position: idx,
-        alternatives: VAGUE_TO_PRECISE[word]
-      });
+    const alternatives = VAGUE_TO_PRECISE[word];
+    if (alternatives) {
+      vagueWords.push({ word, position: idx, alternatives: [...alternatives] });
     }
   });
 
   // 检测情绪词（来自词库）
-  const emotionWords = [];
-  if (lexiconData && lexiconData.emotions) {
-    words.forEach((word, idx) => {
-      if (lexiconData.emotions[word]) {
-        emotionWords.push({
-          word,
-          position: idx,
-          ...lexiconData.emotions[word]
-        });
-      }
-    });
-  }
+  const emotionWords: EmotionWordHit[] = [];
+  words.forEach((word, idx) => {
+    const entry = lexiconData.emotions[word];
+    if (entry) {
+      emotionWords.push({ word, position: idx, ...entry });
+    }
+  });
 
   // 计算表达密度
   const meaningfulWords = totalWords - fillers.length - hedges.length;
@@ -165,32 +174,37 @@ function analyzeText(text) {
     vagueWords,
     emotionWords,
     density: Math.round(density * 100),
-    suggestions: generateSuggestions(vagueWords, fillers, hedges)
+    suggestions: generateSuggestions(vagueWords, fillers, hedges),
   };
 }
 
 /**
  * 生成替代建议
  */
-function generateSuggestions(vagueWords, fillers, hedges) {
-  const suggestions = [];
+function generateSuggestions(
+  vagueWords: VagueWordHit[],
+  fillers: WordHit[],
+  hedges: WordHit[],
+): Suggestion[] {
+  const suggestions: Suggestion[] = [];
 
   // 笼统词替代
-  vagueWords.forEach(item => {
+  vagueWords.forEach((item) => {
+    const alternatives = item.alternatives.slice(0, 3);
     suggestions.push({
       type: 'vague',
       original: item.word,
-      alternatives: item.alternatives.slice(0, 3),
-      message: `「${item.word}」→ 试试更精准的：${item.alternatives.slice(0, 3).join('、')}`
+      alternatives,
+      message: `「${item.word}」→ 试试更精准的：${alternatives.join('、')}`,
     });
   });
 
   // 填充词提醒
   if (fillers.length >= 3) {
-    const topFillers = [...new Set(fillers.map(f => f.word))].slice(0, 3);
+    const topFillers = [...new Set(fillers.map((f) => f.word))].slice(0, 3);
     suggestions.push({
       type: 'filler',
-      message: `填充词偏多（${fillers.length}次）：${topFillers.join('、')}。试试用停顿替代`
+      message: `填充词偏多（${fillers.length}次）：${topFillers.join('、')}。试试用停顿替代`,
     });
   }
 
@@ -198,11 +212,9 @@ function generateSuggestions(vagueWords, fillers, hedges) {
   if (hedges.length >= 2) {
     suggestions.push({
       type: 'hedge',
-      message: `犹豫表达较多（${hedges.length}次）。试试把「我觉得」改成直接陈述`
+      message: `犹豫表达较多（${hedges.length}次）。试试把「我觉得」改成直接陈述`,
     });
   }
 
   return suggestions;
 }
-
-module.exports = { loadLexicon, analyzeText, VAGUE_TO_PRECISE, FILLER_WORDS, HEDGE_WORDS };

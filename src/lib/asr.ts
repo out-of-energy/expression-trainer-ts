@@ -1,58 +1,52 @@
 /**
  * 语音识别模块 - 基于 sherpa-onnx-node
- * 使用 streaming recognizer 实现实时中文语音识别
- * 录音通过 Electron 渲染进程的 Web Audio API 采集，音频数据通过 IPC 传入
+ * 使用 streaming recognizer 实现实时中文语音识别。
+ * 录音通过渲染进程 Web Audio API 采集，音频数据经 IPC 传入。
  */
-
-const path = require('path');
-const fs = require('fs');
-
-let recognizer = null;
-let stream = null;
-let isRunning = false;
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { OnlineRecognizer, OnlineStream } from 'sherpa-onnx-node';
+import type { ASRResult } from '../shared/types';
 
 const MODELS_DIR = path.join(__dirname, '..', 'models');
 const MODEL_SUBDIR = 'sherpa-onnx-streaming-paraformer-bilingual-zh-en';
+const REQUIRED_MODEL_FILES = ['encoder.int8.onnx', 'decoder.int8.onnx', 'tokens.txt'] as const;
 
-/**
- * 检查模型文件是否存在
- */
-function checkModels() {
+let recognizer: OnlineRecognizer | null = null;
+let stream: OnlineStream | null = null;
+let isRunning = false;
+
+/** 检查模型文件是否存在 */
+function checkModels(): void {
   const modelDir = path.join(MODELS_DIR, MODEL_SUBDIR);
-  const files = ['encoder.int8.onnx', 'decoder.int8.onnx', 'tokens.txt'];
-
-  for (const file of files) {
-    const fullPath = path.join(modelDir, file);
-    if (!fs.existsSync(fullPath)) {
+  for (const file of REQUIRED_MODEL_FILES) {
+    if (!existsSync(path.join(modelDir, file))) {
       throw new Error(
         `模型文件未找到: ${file}\n` +
-        `请确认 models/${MODEL_SUBDIR}/ 目录下有完整的模型文件`
+        `请确认 models/${MODEL_SUBDIR}/ 目录下有完整的模型文件`,
       );
     }
   }
 }
 
-/**
- * 初始化 ASR 引擎
- */
-async function initASR() {
+/** 初始化 ASR 引擎 */
+export async function initASR(): Promise<void> {
   if (recognizer) {
-    // 已初始化，重置stream即可
+    // 已初始化，重置 stream 即可
     stream = recognizer.createStream();
     isRunning = true;
-    console.log('[ASR] 重用已有引擎，创建新stream');
+    console.log('[ASR] 重用已有引擎，创建新 stream');
     return;
   }
 
   checkModels();
 
-  const sherpa = require('sherpa-onnx-node');
   const modelDir = path.join(MODELS_DIR, MODEL_SUBDIR);
 
   const config = {
     featConfig: {
       sampleRate: 16000,
-      featureDim: 80
+      featureDim: 80,
     },
     modelConfig: {
       paraformer: {
@@ -62,17 +56,17 @@ async function initASR() {
       tokens: path.join(modelDir, 'tokens.txt'),
       numThreads: 2,
       provider: 'cpu',
-      debug: false
+      debug: false,
     },
     decodingMethod: 'greedy_search',
     maxActivePaths: 4,
     enableEndpoint: true,
     rule1MinTrailingSilence: 2.4,
     rule2MinTrailingSilence: 1.2,
-    rule3MinUtteranceLength: 20
+    rule3MinUtteranceLength: 20,
   };
 
-  recognizer = new sherpa.OnlineRecognizer(config);
+  recognizer = new OnlineRecognizer(config);
   stream = recognizer.createStream();
   isRunning = true;
 
@@ -81,10 +75,9 @@ async function initASR() {
 
 /**
  * 接收渲染进程发来的音频数据进行识别
- * @param {Float32Array} samples - 16kHz 单声道音频采样
- * @returns {{ text: string, isFinal: boolean } | null}
+ * @param samples 16kHz 单声道音频采样
  */
-function feedAudio(samples) {
+export function feedAudio(samples: Float32Array): ASRResult | null {
   if (!isRunning || !stream || !recognizer) return null;
 
   // sherpa-onnx-node API: acceptWaveform({ samples, sampleRate })
@@ -108,11 +101,8 @@ function feedAudio(samples) {
   return null;
 }
 
-/**
- * 停止识别
- * @returns {string} 最后的未确认文本
- */
-function stopRecognition() {
+/** 停止识别，返回最后的未确认文本 */
+export function stopRecognition(): string {
   isRunning = false;
 
   let finalText = '';
@@ -129,5 +119,3 @@ function stopRecognition() {
   console.log('[ASR] 停止录制');
   return finalText;
 }
-
-module.exports = { initASR, feedAudio, stopRecognition };

@@ -3,16 +3,27 @@
   "productName": "宇宙无敌表达训练",
   "version": "1.0.0",
   "description": "宇宙无敌表达训练系统 - 本地桌面版",
-  "main": "main.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev"
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron . --dev"
   },
-  "keywords": ["expression", "training", "speech", "asr", "chinese"],
+  "keywords": [
+    "expression",
+    "training",
+    "speech",
+    "asr",
+    "chinese"
+  ],
   "author": "sisi",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.0.0"
+    "@types/node": "^26.2.0",
+    "electron": "^33.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "sherpa-onnx-node": "^1.10.0"

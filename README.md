@@ -21,6 +21,16 @@ cd expression-trainer
 npm install
 ```
 
+> **国内网络提示**：`npm install` 时 electron 二进制的下载（走 GitHub release-assets）容易 `read ETIMEDOUT`。改用 npmmirror 镜像：
+>
+> ```bash
+> ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm install
+> ```
+> 若已装好依赖、只是二进制缺失：
+> ```bash
+> ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ node node_modules/electron/install.js
+> ```
+
 ### 2. 下载语音识别模型
 
 需要下载 Sherpa-ONNX 的 streaming paraformer 中英双语模型：
@@ -28,12 +38,19 @@ npm install
 ```bash
 cd models
 
-# 方法一：使用 wget
+# 方法一：使用 wget（GitHub，国内可能超时）
 wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2
 tar xvf sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2
 
 # 方法二：使用 huggingface
 # https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en
+
+# 方法三：hf-mirror 国内镜像（推荐，支持断点续传）
+cd models && mkdir -p sherpa-onnx-streaming-paraformer-bilingual-zh-en && cd sherpa-onnx-streaming-paraformer-bilingual-zh-en
+BASE="https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main"
+curl -L -C - -o encoder.int8.onnx "$BASE/encoder.int8.onnx"
+curl -L -C - -o decoder.int8.onnx "$BASE/decoder.int8.onnx"
+curl -L -C - -o tokens.txt "$BASE/tokens.txt"
 ```
 
 下载后 `models/` 目录应包含：

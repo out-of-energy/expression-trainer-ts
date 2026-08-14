@@ -1,51 +1,61 @@
 /**
  * Prompt 模板模块
  * 融合 meeting-insights-analyzer + content-research-writer
- * v6: 实时词库替换 + 完整双skill报告
+ * v6: 实时词库替换 + 完整双 skill 报告
  */
+import type { CustomPrompt, SessionStats } from '../shared/types';
+
+export interface PromptBundle {
+  system: string;
+  user: string;
+}
+
+export interface RealtimeContext {
+  elapsedSec?: number;
+  topic?: string;
+  previousPoints?: string[];
+}
+
+/** 拼接用户自定义规则块（实时反馈用） */
+function buildRealtimeCustomBlock(customPrompt: CustomPrompt | null): string {
+  if (!customPrompt) return '';
+
+  let block = '';
+  if (customPrompt.goals) {
+    block += `\n\n## 用户训练目标(调整你的反馈优先级)\n${customPrompt.goals}`;
+  }
+  if (customPrompt.customRules) {
+    block += `\n\n## 用户自定义规则(和上面的规则一起生效,触发时一样只输出1条提示)\n${customPrompt.customRules}`;
+  }
+  if (customPrompt.styleRef) {
+    block += `\n\n## 用户想要的表达风格(反馈时以此为标准)\n${customPrompt.styleRef}`;
+  }
+  if (customPrompt.customWords) {
+    block += `\n\n## 用户额外口癖词(视为填充词,出现时标记)\n${customPrompt.customWords}`;
+  }
+  return block;
+}
 
 /**
- * 实时反馈 Prompt(多维度教练提示)
- * 规则:每次只输出1条提示,不超过8个字,不解释
- *
- * 视觉层(字幕高亮,由前端词库处理,不经过AI):
- *   绿色 #45A020 - 笼统词/模糊词(情绪词、程度词、描述词)
- *   明黄 #FFD000 - 填充词/连接词滥用(然后、就是、那个、嗯)
- *   洋红 #E5007E - 犹豫词/立场模糊(可能、也许、我觉得、也不是不行)
- *
- * 提示层(AI判断,弹一句话3秒消失):
- *   见下方 system prompt
+ * 实时反馈 Prompt（多维度教练提示）
+ * 规则：每次只输出 1 条提示，不超过 8 个字，不解释
  */
-function getRealtimePrompt(text, context, customPrompt) {
-  // context: { elapsedSec, topic, previousPoints[] }
-  const elapsed = context?.elapsedSec || 0;
+export function getRealtimePrompt(
+  text: string,
+  context: RealtimeContext | null,
+  customPrompt: CustomPrompt | null,
+): PromptBundle {
+  const elapsed = context?.elapsedSec ?? 0;
   const elapsedMin = Math.floor(elapsed / 60);
-  const topic = context?.topic || '';
-  const prevPoints = context?.previousPoints || [];
-
-  // 拼接用户自定义规则
-  let customBlock = '';
-  if (customPrompt) {
-    if (customPrompt.goals) {
-      customBlock += `\n\n## 用户训练目标(调整你的反馈优先级)\n${customPrompt.goals}`;
-    }
-    if (customPrompt.customRules) {
-      customBlock += `\n\n## 用户自定义规则(和上面的规则一起生效,触发时一样只输出1条提示)\n${customPrompt.customRules}`;
-    }
-    if (customPrompt.styleRef) {
-      customBlock += `\n\n## 用户想要的表达风格(反馈时以此为标准)\n${customPrompt.styleRef}`;
-    }
-    if (customPrompt.customWords) {
-      customBlock += `\n\n## 用户额外口癖词(视为填充词,出现时标记)\n${customPrompt.customWords}`;
-    }
-  }
+  const topic = context?.topic ?? '';
+  const prevPoints = context?.previousPoints ?? [];
 
   let contextBlock = '';
   if (elapsedMin > 0) contextBlock += `[已说${elapsedMin}分钟] `;
   if (topic) contextBlock += `[开头主题: "${topic}"] `;
   if (prevPoints.length > 0) contextBlock += `[已说过的观点: ${prevPoints.join(';')}]`;
 
-  const result = {
+  const result: PromptBundle = {
     system: `你是中文口语表达的实时教练。每次只输出1条提示，不超过8个字，不加标点，不解释。
 
 你的职责：根据最新这段话，判断是否触发以下任一规则。触发了输出对应提示。都没触发输出空行。
@@ -71,10 +81,11 @@ function getRealtimePrompt(text, context, customPrompt) {
 - 如果都没触发，输出一个空行
 - 不管错别字、不管语音识别错误`,
 
-    user: `${contextBlock}\n\n最新一段：\n"${text.slice(-500)}"`
+    user: `${contextBlock}\n\n最新一段：\n"${text.slice(-500)}"`,
   };
 
-  // 合并用户自定义内容到system prompt末尾
+  // 合并用户自定义内容到 system prompt 末尾
+  const customBlock = buildRealtimeCustomBlock(customPrompt);
   if (customBlock) {
     result.system += customBlock;
   }
@@ -83,11 +94,15 @@ function getRealtimePrompt(text, context, customPrompt) {
 }
 
 /**
- * 结束报告 Prompt(完整版)
+ * 结束报告 Prompt（完整版）
  * 融合 meeting-insights-analyzer 的行为模式分析 + content-research-writer 的逐句编辑
  */
-function getReportPrompt(fullText, stats, customPrompt) {
-  const result = {
+export function getReportPrompt(
+  fullText: string,
+  stats: SessionStats,
+  customPrompt: CustomPrompt | null,
+): PromptBundle {
+  const result: PromptBundle = {
     system: `你是专业中文表达教练,融合了两套核心能力:
 
 **能力一：沟通行为分析 (meeting-insights-analyzer)**
@@ -217,10 +232,10 @@ function getReportPrompt(fullText, stats, customPrompt) {
 ${fullText}
 ---
 
-数据:${stats.duration}秒 | ${stats.totalWords}字 | 填充词${stats.fillers}次 | 犹豫词${stats.hedges}次 | 笼统词${stats.vagueWords}次`
+数据:${stats.duration}秒 | ${stats.totalWords}字 | 填充词${stats.fillers}次 | 犹豫词${stats.hedges}次 | 笼统词${stats.vagueWords}次`,
   };
 
-  // 合并用户自定义内容到report system prompt末尾
+  // 合并用户自定义内容到 report system prompt 末尾
   let customBlock = '';
   if (customPrompt) {
     if (customPrompt.goals) {
@@ -239,5 +254,3 @@ ${fullText}
 
   return result;
 }
-
-module.exports = { getRealtimePrompt, getReportPrompt };

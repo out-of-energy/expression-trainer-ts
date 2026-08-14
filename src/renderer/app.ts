@@ -1,53 +1,68 @@
-// 宇宙无敌表达训练系统 V2
+/**
+ * 宇宙无敌表达训练系统 — 主界面逻辑（V2）
+ */
+import { getElement } from './dom';
+import type { ASRResult, SessionStats } from '../shared/types';
+
+type FeedbackType = 'good' | 'filler' | 'hedge' | 'vague' | 'ai';
+
+const VAGUE_HIGHLIGHT_WORDS = [
+  '开心', '难过', '害怕', '生气', '不舒服', '很好', '很多', '很快', '很大', '很小',
+  '好看', '不好', '喜欢', '讨厌', '觉得', '想想',
+] as const;
+
+const FILLER_PATTERN = /(嗯|啊|呃|额|那个|就是|然后|这个|对吧|是吧|反正|基本上)/g;
+const HEDGE_PATTERN = /(可能|也许|大概|应该|我觉得|好像|似乎|或许|不一定|差不多|感觉)/g;
 
 class ExpressionTrainer {
-  constructor() {
-    this.isRecording = false;
-    this.isPaused = false;
-    this.startTime = null;
-    this.pausedTime = 0;
-    this.pauseStart = null;
-    this.timerInterval = null;
-    this.fullText = '';
-    this.sentences = [];
-    this.stats = { fillers: 0, hedges: 0, vagueWords: 0, totalWords: 0, duration: 0 };
-    this.lastFeedbackText = '';
-    this.lastReport = '';
+  private isRecording = false;
+  private isPaused = false;
+  private startTime = 0;
+  private pausedTime = 0;
+  private pauseStart: number | null = null;
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private fullText = '';
+  private sentences: string[] = [];
+  private stats: SessionStats = { fillers: 0, hedges: 0, vagueWords: 0, totalWords: 0, duration: 0 };
+  private lastFeedbackText = '';
+  private lastReport = '';
 
-    this.initElements();
+  private audioContext: AudioContext | null = null;
+  private audioProcessor: ScriptProcessorNode | null = null;
+  private mediaStream: MediaStream | null = null;
+
+  private btnStart = getElement<HTMLButtonElement>('btn-start');
+  private btnPaste = getElement<HTMLButtonElement>('btn-paste');
+  private btnPause = getElement<HTMLButtonElement>('btn-pause');
+  private btnResume = getElement<HTMLButtonElement>('btn-resume');
+  private btnStop = getElement<HTMLButtonElement>('btn-stop');
+  private btnReport = getElement<HTMLButtonElement>('btn-report');
+  private btnSettings = getElement<HTMLButtonElement>('btn-settings');
+  private btnCloseReport = getElement<HTMLButtonElement>('btn-close-report');
+  private btnClosePaste = getElement<HTMLButtonElement>('btn-close-paste');
+  private btnAnalyzePaste = getElement<HTMLButtonElement>('btn-analyze-paste');
+  private btnCopyText = getElement<HTMLButtonElement>('btn-copy-text');
+  private btnSaveText = getElement<HTMLButtonElement>('btn-save-text');
+  private btnClear = getElement<HTMLButtonElement>('btn-clear');
+  private btnCopyReport = getElement<HTMLButtonElement>('btn-copy-report');
+  private pasteModal = getElement('paste-modal');
+  private pasteTextarea = getElement<HTMLTextAreaElement>('paste-textarea');
+  private timer = getElement('timer');
+  private subtitleScroll = getElement('subtitle-scroll');
+  private subtitleContainer = getElement('subtitle-container');
+  private feedbackContent = getElement('feedback-content');
+  private reportModal = getElement('report-modal');
+  private reportBody = getElement('report-body');
+  private statFillers = getElement('stat-fillers');
+  private statHedges = getElement('stat-hedges');
+  private statVague = getElement('stat-vague');
+  private statDensity = getElement('stat-density');
+
+  constructor() {
     this.bindEvents();
   }
 
-  initElements() {
-    this.btnStart = document.getElementById('btn-start');
-    this.btnPaste = document.getElementById('btn-paste');
-    this.btnPause = document.getElementById('btn-pause');
-    this.btnResume = document.getElementById('btn-resume');
-    this.btnStop = document.getElementById('btn-stop');
-    this.btnReport = document.getElementById('btn-report');
-    this.btnSettings = document.getElementById('btn-settings');
-    this.btnCloseReport = document.getElementById('btn-close-report');
-    this.btnClosePaste = document.getElementById('btn-close-paste');
-    this.btnAnalyzePaste = document.getElementById('btn-analyze-paste');
-    this.btnCopyText = document.getElementById('btn-copy-text');
-    this.btnSaveText = document.getElementById('btn-save-text');
-    this.btnClear = document.getElementById('btn-clear');
-    this.btnCopyReport = document.getElementById('btn-copy-report');
-    this.pasteModal = document.getElementById('paste-modal');
-    this.pasteTextarea = document.getElementById('paste-textarea');
-    this.timer = document.getElementById('timer');
-    this.subtitleScroll = document.getElementById('subtitle-scroll');
-    this.subtitleContainer = document.getElementById('subtitle-container');
-    this.feedbackContent = document.getElementById('feedback-content');
-    this.reportModal = document.getElementById('report-modal');
-    this.reportBody = document.getElementById('report-body');
-    this.statFillers = document.getElementById('stat-fillers');
-    this.statHedges = document.getElementById('stat-hedges');
-    this.statVague = document.getElementById('stat-vague');
-    this.statDensity = document.getElementById('stat-density');
-  }
-
-  bindEvents() {
+  private bindEvents(): void {
     this.btnStart.addEventListener('click', () => this.startRecording());
     this.btnPaste.addEventListener('click', () => this.openPasteModal());
     this.btnPause.addEventListener('click', () => this.pauseRecording());
@@ -55,11 +70,10 @@ class ExpressionTrainer {
     this.btnStop.addEventListener('click', () => this.stopRecording());
     this.btnReport.addEventListener('click', () => this.generateReport());
     this.btnSettings.addEventListener('click', () => window.api.openSettings());
-    document.getElementById('btn-prompt-editor').addEventListener('click', () => window.api.openPromptEditor());
+    getElement<HTMLButtonElement>('btn-prompt-editor').addEventListener('click', () => window.api.openPromptEditor());
     this.btnCloseReport.addEventListener('click', () => this.reportModal.classList.add('hidden'));
     this.btnCopyReport.addEventListener('click', () => {
-      const reportText = this.reportBody.innerText;
-      navigator.clipboard.writeText(reportText).then(() => {
+      navigator.clipboard.writeText(this.reportBody.innerText).then(() => {
         this.btnCopyReport.textContent = '✅ 已复制';
         setTimeout(() => { this.btnCopyReport.textContent = '📋 复制全文'; }, 2000);
       });
@@ -73,7 +87,7 @@ class ExpressionTrainer {
 
   // ===== 录制控制 =====
 
-  async startRecording() {
+  private async startRecording(): Promise<void> {
     const initResult = await window.api.initASR();
     if (!initResult.success) {
       this.showError(`语音识别启动失败: ${initResult.error}`);
@@ -95,7 +109,7 @@ class ExpressionTrainer {
       this.audioProcessor.connect(this.audioContext.destination);
       this.mediaStream = stream;
     } catch (err) {
-      this.showError(`麦克风访问失败: ${err.message}`);
+      this.showError(`麦克风访问失败: ${err instanceof Error ? err.message : String(err)}`);
       return;
     }
 
@@ -119,7 +133,7 @@ class ExpressionTrainer {
     this.timerInterval = setInterval(() => this.updateTimer(), 1000);
   }
 
-  pauseRecording() {
+  private pauseRecording(): void {
     this.isPaused = true;
     this.pauseStart = Date.now();
     this.btnPause.classList.add('hidden');
@@ -127,26 +141,40 @@ class ExpressionTrainer {
     this.timer.classList.remove('active');
   }
 
-  resumeRecording() {
+  private resumeRecording(): void {
     this.isPaused = false;
-    this.pausedTime += Date.now() - this.pauseStart;
+    if (this.pauseStart !== null) {
+      this.pausedTime += Date.now() - this.pauseStart;
+    }
     this.pauseStart = null;
     this.btnResume.classList.add('hidden');
     this.btnPause.classList.remove('hidden');
     this.timer.classList.add('active');
   }
 
-  async stopRecording() {
-    if (this.audioProcessor) { this.audioProcessor.disconnect(); this.audioProcessor = null; }
-    if (this.audioContext) { this.audioContext.close(); this.audioContext = null; }
-    if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; }
+  private async stopRecording(): Promise<void> {
+    if (this.audioProcessor) {
+      this.audioProcessor.disconnect();
+      this.audioProcessor = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((t) => t.stop());
+      this.mediaStream = null;
+    }
     await window.api.stopASR();
     this.isRecording = false;
     this.isPaused = false;
 
-    clearInterval(this.timerInterval);
+    if (this.timerInterval !== null) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
     let totalPaused = this.pausedTime;
-    if (this.pauseStart) totalPaused += Date.now() - this.pauseStart;
+    if (this.pauseStart !== null) totalPaused += Date.now() - this.pauseStart;
     this.stats.duration = Math.floor((Date.now() - this.startTime - totalPaused) / 1000);
 
     // UI：显示生成报告按钮，可翻阅字幕
@@ -164,15 +192,16 @@ class ExpressionTrainer {
     }
   }
 
-  // ===== ASR结果处理 =====
+  // ===== ASR 结果处理 =====
 
-  handleASRResult({ text, isFinal }) {
+  private handleASRResult(result: ASRResult): void {
+    const { text, isFinal } = result;
     if (isFinal) {
       this.sentences.push(text);
       this.fullText += text;
       this.analyzeCurrentSentence(text);
 
-      // 每30字触发一次AI反馈（语境化精准词建议）
+      // 每 30 字触发一次 AI 反馈（语境化精准词建议）
       if (this.fullText.length - this.lastFeedbackText.length >= 30) {
         this.requestRealtimeFeedback();
       }
@@ -180,18 +209,15 @@ class ExpressionTrainer {
     this.renderSubtitle(text, isFinal);
   }
 
-  renderSubtitle(currentText, isFinal) {
+  private renderSubtitle(currentText: string, isFinal: boolean): void {
     if (isFinal) {
-      // 移除interim
       const interim = this.subtitleContainer.querySelector('.interim-line');
       if (interim) interim.remove();
 
-      // 旧行变灰
-      this.subtitleContainer.querySelectorAll('.subtitle-line:not(.old)').forEach(el => {
+      this.subtitleContainer.querySelectorAll('.subtitle-line:not(.old)').forEach((el) => {
         el.classList.add('old');
       });
 
-      // 新行
       const line = document.createElement('div');
       line.className = 'subtitle-line';
       line.innerHTML = this.highlightText(currentText);
@@ -206,57 +232,52 @@ class ExpressionTrainer {
       interim.textContent = currentText;
     }
 
-    // 自动滚到底
     this.subtitleScroll.scrollTop = this.subtitleScroll.scrollHeight;
   }
 
-  highlightText(text) {
+  private highlightText(text: string): string {
     let result = text;
-    const vagueWords = ['开心','难过','害怕','生气','不舒服','很好','很多','很快','很大','很小','好看','不好','喜欢','讨厌','觉得','想想'];
-    vagueWords.forEach(w => {
+    VAGUE_HIGHLIGHT_WORDS.forEach((w) => {
       result = result.replace(new RegExp(w, 'g'), `<span class="vague">${w}</span>`);
     });
-    const fillerPatterns = /(嗯|啊|呃|额|那个|就是|然后|这个|对吧|是吧|反正|基本上)/g;
-    result = result.replace(fillerPatterns, '<span class="filler">$1</span>');
-    const hedgePatterns = /(可能|也许|大概|应该|我觉得|好像|似乎|或许|不一定|差不多|感觉)/g;
-    result = result.replace(hedgePatterns, '<span class="hedge">$1</span>');
+    result = result.replace(FILLER_PATTERN, '<span class="filler">$1</span>');
+    result = result.replace(HEDGE_PATTERN, '<span class="hedge">$1</span>');
     return result;
   }
 
   // ===== 分析 =====
 
-  async analyzeCurrentSentence(text) {
+  private async analyzeCurrentSentence(text: string): Promise<void> {
     const analysis = await window.api.analyzeText(text);
-    if (analysis) {
-      this.stats.fillers += analysis.fillers.length;
-      this.stats.hedges += analysis.hedges.length;
-      this.stats.vagueWords += analysis.vagueWords.length;
-      this.stats.totalWords += analysis.totalWords;
-      this.updateStatsDisplay();
-      // 碰到笼统词 → 立刻在反馈栏弹出替换建议
-      if (analysis.vagueWords && analysis.vagueWords.length > 0) {
-        analysis.vagueWords.forEach(item => {
-          const alts = item.alternatives.slice(0, 3).join(' / ');
-          this.addFeedbackItem(`「${item.word}」→ ${alts}`, 'vague');
-        });
-      }
-      // 碰到填充词 → 弹提醒
-      if (analysis.fillers && analysis.fillers.length >= 2) {
-        const uniqueFillers = [...new Set(analysis.fillers.map(f => f.word))].slice(0, 3);
-        this.addFeedbackItem(`填充词：${uniqueFillers.join('、')}——试试停顿`, 'filler');
-      }
-      // 碰到犹豫词 → 弹提醒
-      if (analysis.hedges && analysis.hedges.length >= 1) {
-        const uniqueHedges = [...new Set(analysis.hedges.map(h => h.word))].slice(0, 2);
-        this.addFeedbackItem(`「${uniqueHedges.join('」「')}」→ 直接说`, 'hedge');
-      }
+    if (!analysis) return;
+
+    this.stats.fillers += analysis.fillers.length;
+    this.stats.hedges += analysis.hedges.length;
+    this.stats.vagueWords += analysis.vagueWords.length;
+    this.stats.totalWords += analysis.totalWords;
+    this.updateStatsDisplay();
+
+    // 碰到笼统词 → 立刻在反馈栏弹出替换建议
+    for (const item of analysis.vagueWords) {
+      const alts = item.alternatives.slice(0, 3).join(' / ');
+      this.addFeedbackItem(`「${item.word}」→ ${alts}`, 'vague');
+    }
+    // 碰到填充词 → 弹提醒
+    if (analysis.fillers.length >= 2) {
+      const uniqueFillers = [...new Set(analysis.fillers.map((f) => f.word))].slice(0, 3);
+      this.addFeedbackItem(`填充词：${uniqueFillers.join('、')}——试试停顿`, 'filler');
+    }
+    // 碰到犹豫词 → 弹提醒
+    if (analysis.hedges.length >= 1) {
+      const uniqueHedges = [...new Set(analysis.hedges.map((h) => h.word))].slice(0, 2);
+      this.addFeedbackItem(`「${uniqueHedges.join('」「')}」→ 直接说`, 'hedge');
     }
   }
 
-  updateStatsDisplay() {
-    this.statFillers.textContent = this.stats.fillers;
-    this.statHedges.textContent = this.stats.hedges;
-    this.statVague.textContent = this.stats.vagueWords;
+  private updateStatsDisplay(): void {
+    this.statFillers.textContent = String(this.stats.fillers);
+    this.statHedges.textContent = String(this.stats.hedges);
+    this.statVague.textContent = String(this.stats.vagueWords);
     if (this.stats.totalWords > 0) {
       const density = ((this.stats.totalWords - this.stats.fillers - this.stats.hedges) / this.stats.totalWords * 100).toFixed(0);
       this.statDensity.textContent = density + '%';
@@ -265,75 +286,72 @@ class ExpressionTrainer {
 
   // ===== 实时反馈 =====
 
-  async requestRealtimeFeedback() {
+  private async requestRealtimeFeedback(): Promise<void> {
     this.lastFeedbackText = this.fullText;
     const result = await window.api.getRealtimeFeedback(this.fullText);
-    if (result.success && result.feedback) {
-      const lines = result.feedback.split('\n').filter(l => l.trim());
-      lines.forEach(line => {
-        const type = this.classifyFeedback(line.trim());
-        this.addFeedbackItem(line.trim(), type);
+    if (result.success && result.data) {
+      const lines = result.data.split('\n').filter((l) => l.trim());
+      lines.forEach((line) => {
+        const text = line.trim();
+        this.addFeedbackItem(text, this.classifyFeedback(text));
       });
     }
   }
 
-  classifyFeedback(text) {
+  private classifyFeedback(text: string): FeedbackType {
     if (text === '✓' || text.includes('✓')) return 'good';
     // 填充词相关
-    const fillerKeywords = ['嗯','啊','呃','那个','就是','然后','这个','对吧','是吧','反正','基本上','所以说'];
-    if (fillerKeywords.some(w => text.includes(`「${w}」`))) return 'filler';
+    const fillerKeywords = ['嗯', '啊', '呃', '那个', '就是', '然后', '这个', '对吧', '是吧', '反正', '基本上', '所以说'];
+    if (fillerKeywords.some((w) => text.includes(`「${w}」`))) return 'filler';
     // 犹豫词相关
-    const hedgeKeywords = ['可能','也许','大概','应该','我觉得','好像','似乎','感觉','或许'];
-    if (hedgeKeywords.some(w => text.includes(`「${w}」`))) return 'hedge';
+    const hedgeKeywords = ['可能', '也许', '大概', '应该', '我觉得', '好像', '似乎', '感觉', '或许'];
+    if (hedgeKeywords.some((w) => text.includes(`「${w}」`))) return 'hedge';
     // 其他精准词替换
     if (text.includes('→')) return 'vague';
     return 'ai';
   }
 
-  addFeedbackItem(text, type = 'ai') {
-    // 去重：如果前3条已经有相同内容，跳过
+  private addFeedbackItem(text: string, type: FeedbackType = 'ai'): void {
+    // 去重：如果前 3 条已经有相同内容，跳过
     const existing = Array.from(this.feedbackContent.children).slice(0, 3);
-    if (existing.some(el => el.textContent === text)) return;
+    if (existing.some((el) => el.textContent === text)) return;
 
     const item = document.createElement('div');
     item.className = `feedback-item type-${type}`;
     item.textContent = text;
     this.feedbackContent.insertBefore(item, this.feedbackContent.firstChild);
     while (this.feedbackContent.children.length > 12) {
-      this.feedbackContent.removeChild(this.feedbackContent.lastChild);
+      this.feedbackContent.removeChild(this.feedbackContent.lastChild!);
     }
   }
 
   // ===== 报告 =====
 
-  async generateReport() {
+  private async generateReport(): Promise<void> {
     this.reportBody.innerHTML = '<p style="text-align:center;color:#666;padding:40px;">正在生成报告...</p>';
     this.reportModal.classList.remove('hidden');
 
     const result = await window.api.getFinalReport({
       fullText: this.fullText,
-      stats: this.stats
+      stats: this.stats,
     });
 
     if (result.success) {
-      this.lastReport = result.report;
-      this.renderReport(result.report);
+      this.lastReport = result.data;
+      this.renderReport(result.data);
     } else {
       this.reportBody.innerHTML = `<p style="color:#ff6b6b;">生成失败: ${result.error}</p>`;
     }
   }
 
-  renderReport(report) {
-    let html = report
+  private renderReport(report: string): void {
+    const html = report
       .replace(/^### (.+)$/gm, '<h3>$1</h3>')
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/\|(.+)\|/g, (match) => {
-        // 简单表格支持
-        return match;
-      })
+      .replace(/\|(.+)\|/g, (match) => match)
       .replace(/\n/g, '<br>');
 
     this.reportBody.innerHTML = `
@@ -343,10 +361,10 @@ class ExpressionTrainer {
       ${html}
     `;
 
-    document.getElementById('btn-save-report').addEventListener('click', () => this.saveReport());
+    getElement<HTMLButtonElement>('btn-save-report').addEventListener('click', () => this.saveReport());
   }
 
-  async saveReport() {
+  private async saveReport(): Promise<void> {
     if (!this.lastReport) return;
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
@@ -357,34 +375,34 @@ class ExpressionTrainer {
     try {
       const result = await window.api.saveFile(markdown, filename);
       if (result.success) {
-        const btn = document.getElementById('btn-save-report');
+        const btn = getElement<HTMLButtonElement>('btn-save-report');
         btn.textContent = '✓ 已保存';
         btn.style.background = '#333';
         setTimeout(() => { btn.textContent = '💾 保存为 Markdown'; btn.style.background = '#E5007E'; }, 2000);
       }
     } catch (e) {
-      alert('保存失败: ' + e.message);
+      alert('保存失败: ' + (e instanceof Error ? e.message : String(e)));
     }
   }
 
   // ===== 工具 =====
 
-  updateTimer() {
+  private updateTimer(): void {
     let totalPaused = this.pausedTime;
-    if (this.pauseStart) totalPaused += Date.now() - this.pauseStart;
+    if (this.pauseStart !== null) totalPaused += Date.now() - this.pauseStart;
     const elapsed = Math.floor((Date.now() - this.startTime - totalPaused) / 1000);
     const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
     this.timer.textContent = `${minutes}:${seconds}`;
   }
 
-  resetStats() {
+  private resetStats(): void {
     this.stats = { fillers: 0, hedges: 0, vagueWords: 0, totalWords: 0, duration: 0 };
     this.updateStatsDisplay();
     this.feedbackContent.innerHTML = '';
   }
 
-  showError(msg) {
+  private showError(msg: string): void {
     const line = document.createElement('div');
     line.className = 'subtitle-line';
     line.style.color = '#ff6b6b';
@@ -394,7 +412,7 @@ class ExpressionTrainer {
 
   // ===== 复制 & 保存原文 & 清空 =====
 
-  copyOriginalText() {
+  private copyOriginalText(): void {
     if (!this.fullText.trim()) return;
     navigator.clipboard.writeText(this.fullText).then(() => {
       this.btnCopyText.textContent = '✓ 已复制';
@@ -402,7 +420,7 @@ class ExpressionTrainer {
     });
   }
 
-  async saveOriginalText() {
+  private async saveOriginalText(): Promise<void> {
     if (!this.fullText.trim()) return;
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
@@ -417,11 +435,11 @@ class ExpressionTrainer {
         setTimeout(() => { this.btnSaveText.textContent = '💾 保存'; }, 2000);
       }
     } catch (e) {
-      alert('保存失败: ' + e.message);
+      alert('保存失败: ' + (e instanceof Error ? e.message : String(e)));
     }
   }
 
-  clearAll() {
+  private clearAll(): void {
     this.fullText = '';
     this.sentences = [];
     this.lastReport = '';
@@ -438,13 +456,13 @@ class ExpressionTrainer {
 
   // ===== 粘贴逐字稿分析 =====
 
-  openPasteModal() {
+  private openPasteModal(): void {
     this.pasteTextarea.value = '';
     this.pasteModal.classList.remove('hidden');
     this.pasteTextarea.focus();
   }
 
-  async analyzePastedText() {
+  private async analyzePastedText(): Promise<void> {
     const text = this.pasteTextarea.value.trim();
     if (!text) return;
 
@@ -457,7 +475,7 @@ class ExpressionTrainer {
     this.resetStats();
 
     // 按句号/问号/感叹号/换行分句
-    const sentences = text.split(/(?<=[。！？\n])/g).filter(s => s.trim());
+    const sentences = text.split(/(?<=[。！？\n])/g).filter((s) => s.trim());
     this.sentences = sentences;
 
     for (const sentence of sentences) {
@@ -485,9 +503,11 @@ class ExpressionTrainer {
     this.btnSaveText.classList.remove('hidden');
     this.btnClear.classList.remove('hidden');
 
-    // 请求AI语境化反馈
+    // 请求 AI 语境化反馈
     this.requestRealtimeFeedback();
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new ExpressionTrainer(); });
+document.addEventListener('DOMContentLoaded', () => {
+  new ExpressionTrainer();
+});
