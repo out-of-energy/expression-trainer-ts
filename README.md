@@ -4,6 +4,8 @@
 
 一个帮你训练口语表达精准度的本地桌面应用。实时语音识别 → 词库匹配 → AI反馈，全程离线+本地处理。
 
+> 基于 [fxy2311-youyou/expression-trainer](https://github.com/fxy2311-youyou/expression-trainer) 重构（原项目 MIT License，作者 sisi）。
+
 ## 功能
 
 - 🎤 **实时语音识别**：基于 Sherpa-ONNX，完全离线，中文优化

@@ -328,7 +328,7 @@ class ExpressionTrainer {
   // ===== 报告 =====
 
   private async generateReport(): Promise<void> {
-    this.reportBody.innerHTML = '<p style="text-align:center;color:#666;padding:40px;">正在生成报告...</p>';
+    this.reportBody.innerHTML = '<p style="text-align:center;color:#9A958A;padding:40px;">正在生成报告...</p>';
     this.reportModal.classList.remove('hidden');
 
     const result = await window.api.getFinalReport({
@@ -340,7 +340,7 @@ class ExpressionTrainer {
       this.lastReport = result.data;
       this.renderReport(result.data);
     } else {
-      this.reportBody.innerHTML = `<p style="color:#ff6b6b;">生成失败: ${result.error}</p>`;
+      this.reportBody.innerHTML = `<p style="color:#B03A2E;">生成失败: ${result.error}</p>`;
     }
   }
 
@@ -356,7 +356,7 @@ class ExpressionTrainer {
 
     this.reportBody.innerHTML = `
       <div style="text-align:right;margin-bottom:12px;">
-        <button id="btn-save-report" style="background:#E5007E;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:12px;cursor:pointer;">💾 保存为 Markdown</button>
+        <button id="btn-save-report" style="background:#D97757;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;">💾 保存为 Markdown</button>
       </div>
       ${html}
     `;
@@ -377,8 +377,8 @@ class ExpressionTrainer {
       if (result.success) {
         const btn = getElement<HTMLButtonElement>('btn-save-report');
         btn.textContent = '✓ 已保存';
-        btn.style.background = '#333';
-        setTimeout(() => { btn.textContent = '💾 保存为 Markdown'; btn.style.background = '#E5007E'; }, 2000);
+        btn.style.background = '#C15F3C';
+        setTimeout(() => { btn.textContent = '💾 保存为 Markdown'; btn.style.background = '#D97757'; }, 2000);
       }
     } catch (e) {
       alert('保存失败: ' + (e instanceof Error ? e.message : String(e)));
@@ -405,7 +405,7 @@ class ExpressionTrainer {
   private showError(msg: string): void {
     const line = document.createElement('div');
     line.className = 'subtitle-line';
-    line.style.color = '#ff6b6b';
+    line.style.color = '#B03A2E';
     line.textContent = msg;
     this.subtitleContainer.appendChild(line);
   }

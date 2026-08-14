@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     body {
-      background: #1a1a1a;
-      padding: 32px;
+      background: #FAF9F5;
+      color: #1F1E1D;
+      padding: 36px 32px;
       display: block;
       overflow-y: auto;
       -webkit-app-region: drag;
@@ -21,16 +22,18 @@
     }
 
     h1 {
-      font-size: 20px;
-      font-weight: 600;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: 22px;
+      font-weight: 500;
       margin-bottom: 8px;
-      color: #fff;
+      color: #1F1E1D;
+      letter-spacing: 0.3px;
     }
 
     .subtitle {
       font-size: 13px;
-      color: #666;
-      margin-bottom: 28px;
+      color: #6E6A60;
+      margin-bottom: 30px;
       line-height: 1.6;
     }
 
@@ -46,86 +49,85 @@
     }
 
     .section-title {
-      font-size: 14px;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: 15px;
       font-weight: 500;
-      color: #ccc;
+      color: #1F1E1D;
     }
 
     .section-badge {
       font-size: 10px;
       padding: 2px 8px;
-      border-radius: 4px;
+      border-radius: 5px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .badge-locked {
-      background: rgba(255,255,255,0.06);
-      color: #666;
+      background: #F0EEE6;
+      color: #9A958A;
     }
 
     .badge-editable {
-      background: rgba(229,0,126,0.1);
-      color: #E5007E;
+      background: #F5E7DF;
+      color: #C15F3C;
     }
 
     .section-desc {
       font-size: 12px;
-      color: #555;
+      color: #6E6A60;
       margin-bottom: 10px;
       line-height: 1.5;
     }
 
     .locked-preview {
-      background: #111;
-      border: 1px solid #2a2a2a;
-      border-radius: 8px;
+      background: #F0EEE6;
+      border: 1px solid #E8E6DF;
+      border-radius: 10px;
       padding: 14px 16px;
       font-size: 12px;
-      color: #555;
+      color: #6E6A60;
       line-height: 1.6;
       max-height: 120px;
       overflow-y: auto;
       cursor: not-allowed;
-      position: relative;
     }
 
-    .locked-preview::after {
-      content: '🔒 底层规则不可编辑';
-      position: absolute;
-      top: 8px;
-      right: 12px;
+    .locked-note {
+      text-align: right;
       font-size: 10px;
-      color: #444;
+      color: #9A958A;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
     }
 
     textarea {
       width: 100%;
       min-height: 120px;
       padding: 14px 16px;
-      background: #222;
-      border: 1px solid #444;
-      border-radius: 8px;
-      color: #eee;
+      background: #FFFFFF;
+      border: 1px solid #D8D5CA;
+      border-radius: 10px;
+      color: #1F1E1D;
       font-size: 13px;
       font-family: -apple-system, 'SF Pro Text', sans-serif;
       line-height: 1.7;
       resize: vertical;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s;
     }
 
     textarea:focus {
-      border-color: #E5007E;
+      border-color: #D97757;
     }
 
     textarea::placeholder {
-      color: #555;
+      color: #9A958A;
     }
 
     .example-toggle {
       font-size: 11px;
-      color: #E5007E;
+      color: #C15F3C;
       cursor: pointer;
       margin-top: 6px;
       display: inline-block;
@@ -137,13 +139,13 @@
 
     .example-content {
       display: none;
-      background: #1a1a1a;
-      border: 1px dashed #333;
-      border-radius: 6px;
+      background: #F0EEE6;
+      border: 1px dashed #D8D5CA;
+      border-radius: 8px;
       padding: 12px 14px;
       margin-top: 8px;
       font-size: 11px;
-      color: #888;
+      color: #6E6A60;
       line-height: 1.7;
     }
 
@@ -156,19 +158,19 @@
       top: 16px;
       left: 16px;
       padding: 6px 14px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #aaa;
+      background: #FFFFFF;
+      border: 1px solid #D8D5CA;
+      border-radius: 8px;
+      color: #6E6A60;
       font-size: 13px;
       cursor: pointer;
       -webkit-app-region: no-drag;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-back:hover {
-      border-color: #666;
-      color: #fff;
+      border-color: #9A958A;
+      color: #1F1E1D;
     }
 
     .btn-row {
@@ -180,39 +182,39 @@
     .btn-save {
       flex: 1;
       padding: 12px;
-      background: #E5007E;
+      background: #D97757;
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
 
     .btn-save:hover {
-      background: #c70069;
+      background: #C15F3C;
     }
 
     .btn-reset {
       padding: 12px 20px;
       background: transparent;
-      color: #666;
-      border: 1px solid #333;
-      border-radius: 8px;
+      color: #6E6A60;
+      border: 1px solid #D8D5CA;
+      border-radius: 10px;
       font-size: 13px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
 
     .btn-reset:hover {
-      border-color: #666;
-      color: #aaa;
+      border-color: #9A958A;
+      color: #1F1E1D;
     }
 
     .save-success {
       text-align: center;
-      color: #69db7c;
+      color: #4E7A57;
       font-size: 13px;
       margin-top: 12px;
       opacity: 0;
@@ -225,7 +227,7 @@
 
     .divider {
       border: none;
-      border-top: 1px solid #2a2a2a;
+      border-top: 1px solid #E8E6DF;
       margin: 28px 0;
     }
   </style>
@@ -243,6 +245,7 @@
         <span class="section-badge badge-locked">锁定</span>
       </div>
       <div class="locked-preview">
+        <div class="locked-note">🔒 底层规则不可编辑</div>
 14条实时反馈规则（重复检测 / 结论缺失 / 自问自答 / 听众视角 / 前后矛盾 / 时间感知 / 金句捕捉 / 类比检测 / 抽象→具象 / 主题漂移 / 立场模糊）
 + 词库高亮（笼统词 / 填充词 / 犹豫词）
 + 完整报告模板（总评 / 亮点 / 逐句编辑 / 用词替换表 / 行为模式 / 数据）

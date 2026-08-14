@@ -57,6 +57,7 @@ class SettingsPage {
   private customBaseUrlInput = getElement<HTMLInputElement>('custom-base-url');
   private customModelInput = getElement<HTMLInputElement>('custom-model');
   private btnSave = getElement<HTMLButtonElement>('btn-save');
+  private btnCancel = getElement<HTMLButtonElement>('btn-cancel');
   private saveSuccess = getElement('save-success');
   private connectionError = getElement('connection-error');
 
@@ -75,6 +76,10 @@ class SettingsPage {
   private bindEvents(): void {
     this.providerSelect.addEventListener('change', () => this.onProviderChange());
     this.btnSave.addEventListener('click', () => this.save());
+    this.btnCancel.addEventListener('click', () => window.close());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') window.close();
+    });
   }
 
   private async loadSettings(): Promise<void> {

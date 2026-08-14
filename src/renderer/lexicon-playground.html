@@ -5,12 +5,20 @@
 <title>词库 Playground — 分层替换卡片测试</title>
 <style>
 :root {
-  --green: #45A020;
-  --yellow: #FFD000;
-  --magenta: #E5007E;
-  --bg: #F8FFF5;
-  --ink: #2A2A2A;
-  --ink-light: #6A6A6A;
+  --bg: #FAF9F5;
+  --ink: #1F1E1D;
+  --ink-2: #6E6A60;
+  --ink-3: #9A958A;
+  --border: #E8E6DF;
+  --border-strong: #D8D5CA;
+  --green: #4E7A57;
+  --green-soft: rgba(78, 122, 87, 0.13);
+  --amber: #A97E2F;
+  --amber-soft: rgba(169, 126, 47, 0.14);
+  --rose: #B5654A;
+  --rose-soft: rgba(181, 101, 74, 0.12);
+  --accent: #D97757;
+  --serif: Georgia, "Times New Roman", "Songti SC", serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -19,20 +27,22 @@ body {
   font-family: -apple-system, 'PingFang SC', sans-serif;
   background: var(--bg);
   min-height: 100vh;
-  padding: 40px;
+  padding: 44px;
   color: var(--ink);
 }
 
 h1 {
-  font-size: 24px;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 500;
   margin-bottom: 8px;
+  letter-spacing: 0.3px;
 }
 
 .subtitle {
-  color: var(--ink-light);
+  color: var(--ink-2);
   font-size: 14px;
-  margin-bottom: 32px;
+  margin-bottom: 34px;
 }
 
 .main-layout {
@@ -53,62 +63,64 @@ h1 {
   width: 100%;
   min-height: 200px;
   padding: 20px;
-  border: 2px solid #e0e0e0;
+  background: #FFFFFF;
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
   font-size: 16px;
   line-height: 1.8;
   resize: vertical;
   outline: none;
-  transition: border-color 0.2s;
+  color: var(--ink);
+  transition: border-color 0.15s;
 }
 
 .input-area textarea:focus {
-  border-color: var(--green);
+  border-color: var(--accent);
 }
 
 .input-area .hint {
   font-size: 13px;
-  color: var(--ink-light);
+  color: var(--ink-2);
 }
 
 /* 高亮输出区 */
 .output-area {
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 12px;
   padding: 24px;
   min-height: 200px;
   line-height: 2;
   font-size: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.05);
+  border: 1px solid var(--border);
 }
 
 .output-area .highlight {
-  background: rgba(69, 160, 32, 0.15);
+  background: var(--green-soft);
   color: var(--green);
   padding: 2px 4px;
   border-radius: 4px;
   cursor: pointer;
   font-weight: 600;
   position: relative;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 
 .output-area .highlight:hover {
-  background: rgba(69, 160, 32, 0.25);
+  background: rgba(78, 122, 87, 0.24);
 }
 
 .output-area .highlight-filler {
-  background: rgba(255, 208, 0, 0.2);
-  color: #B8860B;
+  background: var(--amber-soft);
+  color: var(--amber);
   padding: 2px 4px;
   border-radius: 4px;
   font-weight: 500;
 }
 
 .output-area .highlight-hedge {
-  background: rgba(229, 0, 126, 0.12);
-  color: var(--magenta);
+  background: var(--rose-soft);
+  color: var(--rose);
   padding: 2px 4px;
   border-radius: 4px;
   font-weight: 500;
@@ -121,18 +133,19 @@ h1 {
 }
 
 .card-panel h2 {
+  font-family: var(--serif);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: 16px;
-  color: var(--ink-light);
+  color: var(--ink-2);
 }
 
 .replacement-card {
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  border: 1px solid #e8e8e8;
+  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.05);
+  border: 1px solid var(--border);
   margin-bottom: 12px;
   animation: slideIn 0.2s ease;
 }
@@ -144,24 +157,26 @@ h1 {
 
 .replacement-card .original {
   font-size: 13px;
-  color: var(--ink-light);
+  color: var(--ink-2);
   margin-bottom: 8px;
 }
 
 .replacement-card .word {
-  font-size: 20px;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 500;
   color: var(--green);
   margin-bottom: 12px;
 }
 
 .replacement-card .category {
   font-size: 12px;
-  color: #999;
+  color: var(--ink-2);
   margin-bottom: 12px;
   padding: 2px 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
   display: inline-block;
 }
 
@@ -174,12 +189,12 @@ h1 {
 .replacement-card .alt-chip {
   padding: 6px 14px;
   background: var(--bg);
-  border: 1px solid rgba(69, 160, 32, 0.3);
+  border: 1px solid var(--border-strong);
   border-radius: 20px;
   font-size: 14px;
   color: var(--ink);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .replacement-card .alt-chip:hover {
@@ -191,7 +206,7 @@ h1 {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #ccc;
+  color: var(--ink-3);
   font-size: 14px;
 }
 
@@ -200,10 +215,10 @@ h1 {
   display: flex;
   gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
   font-size: 13px;
-  color: var(--ink-light);
+  color: var(--ink-2);
 }
 
 .stats-bar .stat {
@@ -218,19 +233,21 @@ h1 {
 }
 
 .stats-bar .dot-green { background: var(--green); }
-.stats-bar .dot-yellow { background: var(--yellow); }
-.stats-bar .dot-magenta { background: var(--magenta); }
+.stats-bar .dot-yellow { background: var(--amber); }
+.stats-bar .dot-magenta { background: var(--rose); }
 
 /* 词库浏览 */
 .lexicon-browser {
-  margin-top: 40px;
+  margin-top: 44px;
   padding-top: 32px;
-  border-top: 2px solid #eee;
+  border-top: 1px solid var(--border);
+  max-width: 1200px;
 }
 
 .lexicon-browser h2 {
+  font-family: var(--serif);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 16px;
 }
 
@@ -239,12 +256,13 @@ h1 {
 }
 
 .category-section h3 {
+  font-family: var(--serif);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--green);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .word-grid {
@@ -256,9 +274,9 @@ h1 {
 .word-item {
   font-size: 13px;
   padding: 8px 12px;
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
 }
 
 .word-item .w-word {
@@ -267,14 +285,15 @@ h1 {
 }
 
 .word-item .w-arrow {
-  color: #ccc;
+  color: var(--ink-3);
   margin: 0 6px;
 }
 
 .word-item .w-alts {
-  color: var(--ink-light);
+  color: var(--ink-2);
   font-size: 12px;
 }
+
 </style>
 </head>
 <body>
@@ -291,9 +310,9 @@ h1 {
 <div class="main-layout">
   <div class="input-area">
     <textarea id="input" placeholder="在这里输入或粘贴你的口语内容...&#10;&#10;比如：我觉得今天挺开心的，感觉做了很多事情，然后嗯就是特别满足。"></textarea>
-    <div class="hint">💡 绿色 = 笼统词（有替换建议） · 黄色 = 填充词 · 粉色 = 犹豫词。点击绿色词看替换卡片。</div>
+    <div class="hint">💡 绿色 = 笼统词（有替换建议） · 琥珀色 = 填充词 · 赭红色 = 犹豫词。点击绿色词看替换卡片。</div>
     <div class="output-area" id="output">
-      <span style="color:#ccc">输入内容后这里会实时显示高亮...</span>
+      <span style="color:#9A958A">输入内容后这里会实时显示高亮...</span>
     </div>
   </div>
 
@@ -348,7 +367,7 @@ const cardsDiv = document.getElementById('cards');
 input.addEventListener('input', () => {
   const text = input.value;
   if (!text.trim()) {
-    output.innerHTML = '<span style="color:#ccc">输入内容后这里会实时显示高亮...</span>';
+    output.innerHTML = '<span style="color:#9A958A">输入内容后这里会实时显示高亮...</span>';
     document.getElementById('stat-vague').textContent = '0';
     document.getElementById('stat-filler').textContent = '0';
     document.getElementById('stat-hedge').textContent = '0';
