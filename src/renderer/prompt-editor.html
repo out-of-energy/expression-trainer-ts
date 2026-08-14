@@ -153,26 +153,6 @@
       display: block;
     }
 
-    .btn-back {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      padding: 6px 14px;
-      background: #FFFFFF;
-      border: 1px solid #D8D5CA;
-      border-radius: 8px;
-      color: #6E6A60;
-      font-size: 13px;
-      cursor: pointer;
-      -webkit-app-region: no-drag;
-      transition: all 0.15s;
-    }
-
-    .btn-back:hover {
-      border-color: #9A958A;
-      color: #1F1E1D;
-    }
-
     .btn-row {
       display: flex;
       gap: 10px;
@@ -233,7 +213,6 @@
   </style>
 </head>
 <body>
-  <button class="btn-back" id="btn-back">← 返回</button>
   <div class="editor-container">
     <h1>🎯 训练规则定制</h1>
     <p class="subtitle">底层词库和基础反馈规则始终生效。你可以在上面叠加个人化的训练目标和规则。</p>
@@ -356,14 +335,6 @@
         msg.textContent = '✓ 已恢复默认';
         msg.classList.add('show');
         setTimeout(() => { msg.classList.remove('show'); msg.textContent = '✓ 已保存，下次训练生效'; }, 2000);
-      }
-    });
-
-    document.getElementById('btn-back').addEventListener('click', () => {
-      if (window.api && window.api.closeWindow) {
-        window.api.closeWindow();
-      } else {
-        window.close();
       }
     });
 

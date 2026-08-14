@@ -7,6 +7,8 @@ import type {
   AppSettings,
   ASRResult,
   CustomPrompt,
+  ModelDownloadProgress,
+  ModelStatus,
   Result,
   SessionStats,
 } from './types';
@@ -35,6 +37,11 @@ export const IpcChannels = {
 
   // 词库分析
   AnalyzeText: 'lexicon:analyze',
+
+  // 模型管理
+  GetModelStatus: 'model:get-status',
+  DownloadModel: 'model:download',
+  ModelDownloadProgress: 'model:download-progress',
 
   // 文件保存
   SaveFile: 'file:save',
@@ -76,6 +83,12 @@ export interface IpcApi {
 
   // 词库分析
   analyzeText(text: string): Promise<AnalysisResult | null>;
+
+  // 模型管理
+  getModelStatus(): Promise<ModelStatus>;
+  downloadModel(): Promise<Result<void>>;
+  onModelDownloadProgress(callback: (progress: ModelDownloadProgress) => void): void;
+  removeModelDownloadProgressListener(): void;
 
   // AI 反馈
   getRealtimeFeedback(text: string): Promise<Result<string>>;

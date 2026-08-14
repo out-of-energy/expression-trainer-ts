@@ -2,7 +2,7 @@
  * 设置页逻辑
  */
 import { getElement } from './dom';
-import type { AppSettings, Provider } from '../shared/types';
+import type { AppSettings, ModelDownloadProgress, ModelStatus, Provider } from '../shared/types';
 
 interface ModelOption {
   value: string;
@@ -58,6 +58,8 @@ class SettingsPage {
   private customModelInput = getElement<HTMLInputElement>('custom-model');
   private btnSave = getElement<HTMLButtonElement>('btn-save');
   private btnCancel = getElement<HTMLButtonElement>('btn-cancel');
+  private asrModelPath = getElement<HTMLInputElement>('asr-model-path');
+  private btnLoadModel = getElement<HTMLButtonElement>('btn-load-model');
   private saveSuccess = getElement('save-success');
   private connectionError = getElement('connection-error');
 
@@ -71,12 +73,15 @@ class SettingsPage {
   constructor() {
     this.bindEvents();
     this.loadSettings();
+    this.loadModelStatus();
   }
 
   private bindEvents(): void {
     this.providerSelect.addEventListener('change', () => this.onProviderChange());
     this.btnSave.addEventListener('click', () => this.save());
     this.btnCancel.addEventListener('click', () => window.close());
+    this.btnLoadModel.addEventListener('click', () => this.loadModel());
+    window.api.onModelDownloadProgress((progress) => this.onModelProgress(progress));
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') window.close();
     });
@@ -88,6 +93,63 @@ class SettingsPage {
 
     // 先填充模型列表再加载字段值
     this.onProviderChange();
+  }
+
+  // ===== 本地 ASR 模型 =====
+
+  private async loadModelStatus(): Promise<void> {
+    const status = await window.api.getModelStatus();
+    this.applyModelStatus(status);
+  }
+
+  private applyModelStatus(status: ModelStatus): void {
+    if (status.downloading) {
+      this.showDownloadingState();
+    } else if (status.installed) {
+      this.showInstalledState();
+    } else {
+      this.showNotInstalledState();
+    }
+  }
+
+  private showInstalledState(): void {
+    this.asrModelPath.value = '已加载';
+    this.btnLoadModel.textContent = '已加载';
+    this.btnLoadModel.disabled = true;
+  }
+
+  private showNotInstalledState(): void {
+    this.asrModelPath.value = '未加载';
+    this.btnLoadModel.textContent = '加载';
+    this.btnLoadModel.disabled = false;
+  }
+
+  private showDownloadingState(): void {
+    this.asrModelPath.value = '正在下载语音模型…';
+    this.btnLoadModel.textContent = '下载中…';
+    this.btnLoadModel.disabled = true;
+  }
+
+  private async loadModel(): Promise<void> {
+    this.showDownloadingState();
+
+    const result = await window.api.downloadModel();
+    if (result.success) {
+      this.showInstalledState();
+    } else {
+      this.asrModelPath.value = `加载失败：${result.error}`;
+      this.btnLoadModel.textContent = '重试';
+      this.btnLoadModel.disabled = false;
+    }
+  }
+
+  private onModelProgress(progress: ModelDownloadProgress): void {
+    if (progress.done) {
+      this.showInstalledState();
+      return;
+    }
+    this.btnLoadModel.textContent = `下载中 ${progress.percent}%`;
+    this.asrModelPath.value = `正在下载 ${progress.current}…`;
   }
 
   /** 加载指定 provider 的配置到表单字段 */

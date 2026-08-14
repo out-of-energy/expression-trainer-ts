@@ -7,30 +7,26 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { OnlineRecognizer, OnlineStream } from 'sherpa-onnx-node';
 import type { ASRResult } from '../shared/types';
-
-const MODELS_DIR = path.join(__dirname, '..', 'models');
-const MODEL_SUBDIR = 'sherpa-onnx-streaming-paraformer-bilingual-zh-en';
-const REQUIRED_MODEL_FILES = ['encoder.int8.onnx', 'decoder.int8.onnx', 'tokens.txt'] as const;
+import { ASR_MODEL_FILES } from './model-manager';
 
 let recognizer: OnlineRecognizer | null = null;
 let stream: OnlineStream | null = null;
 let isRunning = false;
 
-/** 检查模型文件是否存在 */
-function checkModels(): void {
-  const modelDir = path.join(MODELS_DIR, MODEL_SUBDIR);
-  for (const file of REQUIRED_MODEL_FILES) {
+/** 检查模型文件是否完整 */
+function checkModels(modelDir: string): void {
+  for (const file of ASR_MODEL_FILES) {
     if (!existsSync(path.join(modelDir, file))) {
       throw new Error(
         `模型文件未找到: ${file}\n` +
-        `请确认 models/${MODEL_SUBDIR}/ 目录下有完整的模型文件`,
+        `请确认 ${modelDir}/ 目录下有完整的模型文件`,
       );
     }
   }
 }
 
-/** 初始化 ASR 引擎 */
-export async function initASR(): Promise<void> {
+/** 初始化 ASR 引擎（modelDir 为已解析好的模型目录） */
+export async function initASR(modelDir: string): Promise<void> {
   if (recognizer) {
     // 已初始化，重置 stream 即可
     stream = recognizer.createStream();
@@ -39,9 +35,7 @@ export async function initASR(): Promise<void> {
     return;
   }
 
-  checkModels();
-
-  const modelDir = path.join(MODELS_DIR, MODEL_SUBDIR);
+  checkModels(modelDir);
 
   const config = {
     featConfig: {

@@ -14,6 +14,7 @@ import path from 'node:path';
 import { initASR, feedAudio, stopRecognition } from '../lib/asr';
 import { loadLexicon, analyzeText } from '../lib/lexicon';
 import { sendFeedback, sendReport, testConnection } from '../lib/ai-feedback';
+import { downloadModel, getModelStatus, resolveModelDir } from '../lib/model-manager';
 import { IpcChannels } from '../shared/ipc';
 import type { FinalReportInput } from '../shared/ipc';
 import type {
@@ -21,6 +22,7 @@ import type {
   AppSettings,
   ASRResult,
   CustomPrompt,
+  ModelStatus,
   Provider,
   ProviderSettings,
   Result,
@@ -33,6 +35,16 @@ let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let promptEditorWindow: BrowserWindow | null = null;
 let asrReady = false;
+
+/** 用户可写模型目录（下载目标） */
+function userModelsDir(): string {
+  return path.join(app.getPath('userData'), 'models');
+}
+
+/** 项目自带/打包模型目录（只读兼容） */
+function bundledModelsDir(): string {
+  return path.join(app.getAppPath(), 'models');
+}
 
 // ---------------------------------------------------------------------------
 // 设置持久化（JSON 边界：运行时校验 + 旧版结构迁移）
@@ -358,8 +370,12 @@ ipcMain.handle(IpcChannels.CloseCurrentWindow, (event) => {
 
 // 语音识别相关 - Web Audio 方案
 ipcMain.handle(IpcChannels.InitASR, async (): Promise<Result<void>> => {
+  const modelDir = resolveModelDir(userModelsDir(), bundledModelsDir());
+  if (!modelDir) {
+    return { success: false, error: '语音模型未加载，请先在设置页加载' };
+  }
   try {
-    await initASR();
+    await initASR(modelDir);
     asrReady = true;
     return { success: true, data: undefined };
   } catch (error) {
@@ -388,6 +404,26 @@ ipcMain.handle(IpcChannels.TestLLMConnection, (_event, settings: AppSettings) =>
 ipcMain.handle(IpcChannels.AnalyzeText, (_event, text: string): AnalysisResult | null =>
   analyzeText(text),
 );
+
+// ASR 模型管理
+ipcMain.handle(IpcChannels.GetModelStatus, (): ModelStatus =>
+  getModelStatus(userModelsDir(), bundledModelsDir()),
+);
+
+ipcMain.handle(IpcChannels.DownloadModel, async (): Promise<Result<void>> => {
+  try {
+    await downloadModel(userModelsDir(), (progress) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send(IpcChannels.ModelDownloadProgress, progress);
+        }
+      }
+    });
+    return { success: true, data: undefined };
+  } catch (error) {
+    return { success: false, error: toErrorMessage(error) };
+  }
+});
 
 // 文件保存
 ipcMain.handle(

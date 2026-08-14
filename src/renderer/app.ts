@@ -88,6 +88,13 @@ class ExpressionTrainer {
   // ===== 录制控制 =====
 
   private async startRecording(): Promise<void> {
+    const modelStatus = await window.api.getModelStatus();
+    if (!modelStatus.installed) {
+      this.showError('⚠️ 语音模型未加载，请先在设置页加载');
+      window.api.openSettings();
+      return;
+    }
+
     const initResult = await window.api.initASR();
     if (!initResult.success) {
       this.showError(`语音识别启动失败: ${initResult.error}`);
@@ -295,6 +302,9 @@ class ExpressionTrainer {
         const text = line.trim();
         this.addFeedbackItem(text, this.classifyFeedback(text));
       });
+    } else if (!result.success) {
+      console.error('[实时反馈]', result.error);
+      this.addFeedbackItem(`⚠️ AI 反馈失败：${result.error}`, 'ai');
     }
   }
 

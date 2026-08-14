@@ -6,6 +6,7 @@ import { getRealtimePrompt, getReportPrompt } from './prompts';
 import type {
   AppSettings,
   CustomPrompt,
+  Provider,
   Result,
   SessionStats,
 } from '../shared/types';
@@ -26,6 +27,7 @@ export interface ResolvedProviderConfig {
   endpoint: string;
   apiKey: string;
   model: string;
+  provider: Provider;
 }
 
 /**
@@ -41,18 +43,21 @@ export function resolveProviderConfig(settings: AppSettings): ResolvedProviderCo
         endpoint: PROVIDER_ENDPOINTS.openai,
         apiKey: selected.apiKey,
         model: selected.model || 'gpt-4o-mini',
+        provider: 'openai',
       };
     case 'deepseek':
       return {
         endpoint: PROVIDER_ENDPOINTS.deepseek,
         apiKey: selected.apiKey,
         model: selected.model || 'deepseek-v4-flash',
+        provider: 'deepseek',
       };
     case 'ollama':
       return {
         endpoint: `${selected.ollamaUrl || 'http://localhost:11434'}/v1/chat/completions`,
         apiKey: 'ollama', // Ollama 不需要真实 key 但接口需要这个字段
         model: selected.model || 'qwen2.5:7b',
+        provider: 'ollama',
       };
     case 'custom': {
       const base = selected.baseUrl.replace(/\/+$/, '');
@@ -60,9 +65,17 @@ export function resolveProviderConfig(settings: AppSettings): ResolvedProviderCo
         endpoint: base ? `${base}/chat/completions` : '',
         apiKey: selected.apiKey,
         model: selected.model,
+        provider: 'custom',
       };
     }
   }
+}
+
+interface CallAPIOptions {
+  maxTokens?: number;
+  temperature?: number;
+  /** 关闭思考模式（deepseek v4 系列专用，短回复任务更稳更快） */
+  disableThinking?: boolean;
 }
 
 /** 发送请求到 OpenAI 兼容接口 */
@@ -71,20 +84,27 @@ async function callAPI(
   apiKey: string,
   model: string,
   messages: ChatMessage[],
-  maxTokens = 200,
+  options: CallAPIOptions = {},
 ): Promise<string> {
+  const { maxTokens = 200, temperature = 0.7, disableThinking = false } = options;
+
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+  if (disableThinking) {
+    body.thinking = { type: 'disabled' };
+  }
+
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.7,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -110,7 +130,10 @@ export async function sendFeedback(
     { role: 'user', content: prompt.user },
   ];
 
-  return callAPI(config.endpoint, config.apiKey, config.model, messages, 150);
+  return callAPI(config.endpoint, config.apiKey, config.model, messages, {
+    maxTokens: 150,
+    disableThinking: config.provider === 'deepseek',
+  });
 }
 
 /** 发送结束报告请求，返回报告文本 */
@@ -128,7 +151,7 @@ export async function sendReport(
     { role: 'user', content: prompt.user },
   ];
 
-  return callAPI(config.endpoint, config.apiKey, config.model, messages, 8192);
+  return callAPI(config.endpoint, config.apiKey, config.model, messages, { maxTokens: 8192 });
 }
 
 /** 测试 LLM 连通性：发送一条极简请求验证配置是否可用 */

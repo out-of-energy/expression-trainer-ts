@@ -28,6 +28,16 @@ const api: IpcApi = {
   // 词库分析
   analyzeText: (text) => ipcRenderer.invoke(IpcChannels.AnalyzeText, text),
 
+  // 模型管理
+  getModelStatus: () => ipcRenderer.invoke(IpcChannels.GetModelStatus),
+  downloadModel: () => ipcRenderer.invoke(IpcChannels.DownloadModel),
+  onModelDownloadProgress: (callback) => {
+    ipcRenderer.on(IpcChannels.ModelDownloadProgress, (_event, progress) => callback(progress));
+  },
+  removeModelDownloadProgressListener: () => {
+    ipcRenderer.removeAllListeners(IpcChannels.ModelDownloadProgress);
+  },
+
   // AI 反馈
   getRealtimeFeedback: (text) => ipcRenderer.invoke(IpcChannels.GetRealtimeFeedback, text),
   getFinalReport: (input) => ipcRenderer.invoke(IpcChannels.GetFinalReport, input),

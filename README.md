@@ -2,7 +2,7 @@
 
 > 👉 **在线版已上线：[exprtrain.online](https://exprtrain.online)**，无需安装，打开浏览器即用。支持中英双语。
 
-一个帮你训练口语表达精准度的本地桌面应用。实时语音识别 → 词库匹配 → AI反馈，全程离线+本地处理。
+一个帮你训练口语表达精准度的本地桌面应用。实时语音识别 → 词库匹配 → AI反馈，其中语音识别与词库分析完全离线。
 
 > 基于 [fxy2311-youyou/expression-trainer](https://github.com/fxy2311-youyou/expression-trainer) 重构（原项目 MIT License，作者 sisi）。
 
@@ -11,7 +11,7 @@
 - 🎤 **实时语音识别**：基于 Sherpa-ONNX，完全离线，中文优化
 - 📝 **全屏字幕显示**：黑底大字，实时显示你说的每一句话
 - 🔍 **词库分析**：自动检测填充词、犹豫词、笼统词，给出精准替代
-- 🤖 **AI反馈**：支持 Groq/OpenAI/DeepSeek/Ollama 多后端
+- 🤖 **AI反馈**：支持 OpenAI / DeepSeek / Ollama / 自定义兼容接口多后端
 - 📊 **分析报告**：6维度深度分析（逻辑/直接性/填充词/密度/词汇/亮点）
 
 ## 安装
@@ -33,21 +33,15 @@ npm install
 > ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ node node_modules/electron/install.js
 > ```
 
-### 2. 下载语音识别模型
+### 2. 加载语音识别模型
 
-需要下载 Sherpa-ONNX 的 streaming paraformer 中英双语模型：
+应用使用 Sherpa-ONNX 的 streaming paraformer 中英双语模型（约 226 MB）。
+
+**推荐：应用内一键加载** —— 启动后点击右上角 ⚙️ 进入设置页，在「本地离线语音模型」处点击「加载」，应用会自动从国内镜像下载到用户数据目录（`~/Library/Application Support/宇宙无敌表达训练/models/`）。
+
+**备选：手动下载到项目 `models/` 目录**（开发 / 离线部署）：
 
 ```bash
-cd models
-
-# 方法一：使用 wget（GitHub，国内可能超时）
-wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2
-tar xvf sherpa-onnx-streaming-paraformer-bilingual-zh-en.tar.bz2
-
-# 方法二：使用 huggingface
-# https://huggingface.co/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en
-
-# 方法三：hf-mirror 国内镜像（推荐，支持断点续传）
 cd models && mkdir -p sherpa-onnx-streaming-paraformer-bilingual-zh-en && cd sherpa-onnx-streaming-paraformer-bilingual-zh-en
 BASE="https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main"
 curl -L -C - -o encoder.int8.onnx "$BASE/encoder.int8.onnx"
@@ -55,7 +49,7 @@ curl -L -C - -o decoder.int8.onnx "$BASE/decoder.int8.onnx"
 curl -L -C - -o tokens.txt "$BASE/tokens.txt"
 ```
 
-下载后 `models/` 目录应包含：
+模型就绪后的目录结构（三处文件齐全即视为已加载）：
 ```
 models/
 └── sherpa-onnx-streaming-paraformer-bilingual-zh-en/
@@ -85,20 +79,20 @@ npm start
 
 ## 使用说明
 
-1. **点击「开始录制」** → 对着麦克风说话
-2. **实时字幕**会在屏幕中央显示你说的内容
-3. **左侧面板**实时统计填充词/犹豫词/笼统词
-4. **右侧面板**每50字会给出AI实时反馈
-5. **说完后点击「结束」** → 可以点「生成报告」获取完整分析
+1. **首次使用**：点右上角 ⚙️ → 设置页「本地离线语音模型」→「加载」，下载语音模型（约 226MB）
+2. **点击「开始录制」** → 对着麦克风说话（若模型未加载，会提示并自动打开设置页）
+3. **实时字幕**会在屏幕中央显示你说的内容
+4. **左侧面板**实时统计填充词/犹豫词/笼统词
+5. **右侧面板**每50字会给出AI实时反馈
+6. **说完后点击「结束」** → 可以点「生成报告」获取完整分析
 
 ## 字幕颜色含义
 
 | 颜色 | 含义 |
 |------|------|
-| 🔴 红色波浪下划线 | 填充词（嗯、啊、那个、然后…） |
-| 🟠 橙色 | 犹豫词（可能、也许、我觉得…） |
-| 🟡 黄色虚线 | 笼统词（有精准替代建议） |
-| 🟢 绿色 | 有力表达（好句子！） |
+| 🟢 绿色虚线 | 笼统词（有精准替代建议） |
+| 🔴 赭红波浪线 | 填充词（嗯、啊、那个、然后…） |
+| 🟠 琥珀色 | 犹豫词（可能、也许、我觉得…） |
 
 ## 技术架构
 
@@ -131,26 +125,33 @@ npm start
 ## 开发
 
 ```bash
+# 类型检查
+npm run typecheck
+
+# 构建（esbuild 打包到 dist/）
+npm run build
+
+# 启动（构建 + 运行）
+npm start
+
 # 开发模式（带DevTools）
 npm run dev
+```
 
-# 目录结构
-├── main.js              # Electron主进程
-├── preload.js           # preload脚本
+目录结构：
+
+```
 ├── src/
-│   ├── index.html       # 主界面
-│   ├── settings.html    # 设置页
-│   ├── styles.css       # 样式
-│   ├── app.js           # 前端逻辑
-│   └── settings.js      # 设置逻辑
-├── lib/
-│   ├── asr.js           # 语音识别
-│   ├── lexicon.js       # 词库匹配
-│   ├── ai-feedback.js   # AI反馈
-│   └── prompts.js       # Prompt模板
+│   ├── main/main.ts        # Electron 主进程
+│   ├── preload.ts          # preload 脚本
+│   ├── shared/             # 共享类型 + IPC 契约
+│   ├── lib/                # asr / lexicon / ai-feedback / prompts / model-manager
+│   └── renderer/           # 渲染进程（app.ts / settings.ts / *.html / styles.css）
 ├── data/
 │   └── emotion-lexicon.json
-└── models/              # Sherpa-ONNX模型（需下载）
+├── build.mjs               # esbuild 构建脚本
+├── tsconfig.json
+└── models/                 # Sherpa-ONNX 模型（应用内加载，或手动放置）
 ```
 
 ## 系统要求
