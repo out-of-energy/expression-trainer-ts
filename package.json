@@ -17,7 +17,7 @@
     "asr",
     "chinese"
   ],
-  "author": "sisi",
+  "author": "out-of-energy (fork of sisi's expression-trainer)",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.2.0",
