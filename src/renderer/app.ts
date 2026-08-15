@@ -124,6 +124,7 @@ class ExpressionTrainer {
     this.isPaused = false;
     this.startTime = Date.now();
     this.pausedTime = 0;
+    this.pauseStart = null;
     this.fullText = '';
     this.sentences = [];
     this.resetStats();
@@ -183,6 +184,7 @@ class ExpressionTrainer {
     let totalPaused = this.pausedTime;
     if (this.pauseStart !== null) totalPaused += Date.now() - this.pauseStart;
     this.stats.duration = Math.floor((Date.now() - this.startTime - totalPaused) / 1000);
+    this.pauseStart = null;
 
     // UI：显示生成报告按钮，可翻阅字幕
     this.btnStop.classList.add('hidden');
