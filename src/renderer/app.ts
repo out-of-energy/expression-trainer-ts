@@ -1,6 +1,7 @@
 /**
  * 宇宙无敌表达训练系统 — 主界面逻辑（V2）
  */
+import MarkdownIt from 'markdown-it';
 import { getElement } from './dom';
 import type { ASRResult, SessionStats } from '../shared/types';
 
@@ -14,13 +15,12 @@ const VAGUE_HIGHLIGHT_WORDS = [
 const FILLER_PATTERN = /(嗯|啊|呃|额|那个|就是|然后|这个|对吧|是吧|反正|基本上)/g;
 const HEDGE_PATTERN = /(可能|也许|大概|应该|我觉得|好像|似乎|或许|不一定|差不多|感觉)/g;
 
-/** 转义 HTML 特殊字符，防止 AI 输出里的 < > 被当作标签解析 */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
+/** Markdown 渲染器（与 VS Code 同款引擎） */
+const md = new MarkdownIt({
+  html: false, // 转义输入中的 HTML，防注入
+  linkify: true, // 自动识别链接
+  breaks: true, // 单换行转 <br>
+});
 
 class ExpressionTrainer {
   private isRecording = false;
@@ -374,14 +374,7 @@ class ExpressionTrainer {
 
   private renderReport(report: string): void {
     try {
-      const html = escapeHtml(report)
-        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
-        .replace(/\|(.+)\|/g, (match) => match)
-        .replace(/\n/g, '<br>');
+      const html = md.render(report);
 
       this.reportBody.innerHTML = `
         <div style="text-align:right;margin-bottom:12px;">
