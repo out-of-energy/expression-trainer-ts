@@ -44,11 +44,11 @@ export async function initASR(modelDir: string): Promise<void> {
     },
     modelConfig: {
       paraformer: {
-        encoder: path.join(modelDir, 'encoder.int8.onnx'),
-        decoder: path.join(modelDir, 'decoder.int8.onnx'),
+        encoder: path.join(modelDir, 'encoder.onnx'),
+        decoder: path.join(modelDir, 'decoder.onnx'),
       },
       tokens: path.join(modelDir, 'tokens.txt'),
-      numThreads: 2,
+      numThreads: 4,
       provider: 'cpu',
       debug: false,
     },
