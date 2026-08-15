@@ -405,6 +405,30 @@ button, input, select, textarea, .subtitle-scroll, .feedback-content, .modal-bod
   color: var(--text-2);
   font-weight: 500;
 }
+.modal-body p { margin: 8px 0; }
+.modal-body ul,
+.modal-body ol { margin: 8px 0; padding-left: 24px; }
+.modal-body li { margin: 3px 0; }
+.modal-body a { color: var(--accent-hover); text-decoration: none; }
+.modal-body a:hover { text-decoration: underline; }
+.modal-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+.modal-body pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.modal-body pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
 
 /* 滚动条 */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

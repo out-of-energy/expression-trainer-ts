@@ -20,12 +20,14 @@
   "author": "out-of-energy (fork of sisi's expression-trainer)",
   "license": "MIT",
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^26.2.0",
     "electron": "^33.0.0",
     "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "markdown-it": "^15.0.0",
     "sherpa-onnx-node": "^1.10.0"
   }
 }

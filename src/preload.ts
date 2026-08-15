@@ -43,6 +43,15 @@ const api: IpcApi = {
   getFinalReport: (input) => ipcRenderer.invoke(IpcChannels.GetFinalReport, input),
   testLLMConnection: (settings) => ipcRenderer.invoke(IpcChannels.TestLLMConnection, settings),
 
+  // 历史训练记录
+  openHistory: () => ipcRenderer.invoke(IpcChannels.OpenHistoryWindow),
+  history: {
+    add: (record) => ipcRenderer.invoke(IpcChannels.HistoryAdd, record),
+    list: () => ipcRenderer.invoke(IpcChannels.HistoryList),
+    update: (id, patch) => ipcRenderer.invoke(IpcChannels.HistoryUpdate, id, patch),
+    delete: (id) => ipcRenderer.invoke(IpcChannels.HistoryDelete, id),
+  },
+
   // 文件保存
   saveFile: (content, filename) => ipcRenderer.invoke(IpcChannels.SaveFile, content, filename),
 };

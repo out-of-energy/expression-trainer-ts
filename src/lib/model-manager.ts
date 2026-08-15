@@ -9,11 +9,11 @@ import { pipeline } from 'node:stream/promises';
 import type { ReadableStream } from 'node:stream/web';
 import type { ModelDownloadProgress, ModelStatus } from '../shared/types';
 
-export const ASR_MODEL_SUBDIR = 'sherpa-onnx-streaming-paraformer-bilingual-zh-en';
-export const ASR_MODEL_FILES = ['encoder.int8.onnx', 'decoder.int8.onnx', 'tokens.txt'] as const;
+export const ASR_MODEL_SUBDIR = 'sherpa-onnx-streaming-paraformer-zh';
+export const ASR_MODEL_FILES = ['encoder.onnx', 'decoder.onnx', 'tokens.txt'] as const;
 
 const DOWNLOAD_BASE =
-  'https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main';
+  'https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-zh/resolve/main';
 
 let downloading = false;
 

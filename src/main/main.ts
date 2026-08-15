@@ -15,6 +15,12 @@ import { initASR, feedAudio, stopRecognition } from '../lib/asr';
 import { loadLexicon, analyzeText } from '../lib/lexicon';
 import { sendFeedback, sendReport, testConnection } from '../lib/ai-feedback';
 import { downloadModel, getModelStatus, resolveModelDir } from '../lib/model-manager';
+import {
+  addRecord,
+  deleteRecord,
+  listRecords,
+  updateRecord,
+} from '../lib/history';
 import { IpcChannels } from '../shared/ipc';
 import type { FinalReportInput } from '../shared/ipc';
 import type {
@@ -26,14 +32,25 @@ import type {
   Provider,
   ProviderSettings,
   Result,
+  TrainingRecord,
 } from '../shared/types';
 
 // 覆盖应用显示名称（菜单栏、Dock、任务栏、窗口标题）
 app.setName('宇宙无敌表达训练');
 
+// 容错：stdout/stderr 管道被关闭时（如从终端启动后终端退出），
+// console 输出会抛未捕获的 EPIPE 异常导致主进程崩溃
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE') return; // 管道已断，静默忽略
+    console.error('[stdio]', err);
+  });
+}
+
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let promptEditorWindow: BrowserWindow | null = null;
+let historyWindow: BrowserWindow | null = null;
 let asrReady = false;
 
 /** 用户可写模型目录（下载目标） */
@@ -282,6 +299,33 @@ function createSettingsWindow(): void {
   });
 }
 
+function createHistoryWindow(): void {
+  if (historyWindow) {
+    historyWindow.focus();
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 920,
+    height: 720,
+    backgroundColor: '#1a1a1a',
+    titleBarStyle: 'hiddenInset',
+    parent: mainWindow ?? undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  historyWindow = win;
+
+  win.loadFile(path.join(__dirname, 'renderer', 'history.html'));
+
+  win.on('closed', () => {
+    historyWindow = null;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // App 生命周期
 // ---------------------------------------------------------------------------
@@ -439,8 +483,12 @@ ipcMain.handle(
       : await dialog.showSaveDialog(options);
 
     if (!result.canceled && result.filePath) {
-      writeFileSync(result.filePath, content, 'utf-8');
-      return { success: true, data: result.filePath };
+      try {
+        writeFileSync(result.filePath, content, 'utf-8');
+        return { success: true, data: result.filePath };
+      } catch (error) {
+        return { success: false, error: `保存失败: ${toErrorMessage(error)}` };
+      }
     }
     return { success: false, error: '已取消' };
   },
@@ -462,8 +510,50 @@ ipcMain.handle(IpcChannels.GetFinalReport, async (_event, input: FinalReportInpu
   const settings = loadSettings();
   const customPrompt = loadCustomPrompt();
   try {
-    const report = await sendReport(input.fullText, input.stats, settings, customPrompt);
+    const report = await sendReport(input.fullText, input.stats, settings, customPrompt, input.source);
     return { success: true, data: report };
+  } catch (error) {
+    return { success: false, error: toErrorMessage(error) };
+  }
+});
+
+// 历史训练记录
+ipcMain.handle(IpcChannels.OpenHistoryWindow, () => {
+  createHistoryWindow();
+});
+
+ipcMain.handle(
+  IpcChannels.HistoryAdd,
+  (_event, record: Omit<TrainingRecord, 'id' | 'createdAt'>): Result<string> => {
+    try {
+      const full = addRecord(app.getPath('userData'), record);
+      return { success: true, data: full.id };
+    } catch (error) {
+      return { success: false, error: toErrorMessage(error) };
+    }
+  },
+);
+
+ipcMain.handle(IpcChannels.HistoryList, (): TrainingRecord[] =>
+  listRecords(app.getPath('userData')),
+);
+
+ipcMain.handle(
+  IpcChannels.HistoryUpdate,
+  (_event, id: string, patch: Partial<TrainingRecord>): Result<void> => {
+    try {
+      updateRecord(app.getPath('userData'), id, patch);
+      return { success: true, data: undefined };
+    } catch (error) {
+      return { success: false, error: toErrorMessage(error) };
+    }
+  },
+);
+
+ipcMain.handle(IpcChannels.HistoryDelete, (_event, id: string): Result<void> => {
+  try {
+    deleteRecord(app.getPath('userData'), id);
+    return { success: true, data: undefined };
   } catch (error) {
     return { success: false, error: toErrorMessage(error) };
   }

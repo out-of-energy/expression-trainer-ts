@@ -37,38 +37,49 @@ export interface ResolvedProviderConfig {
 export function resolveProviderConfig(settings: AppSettings): ResolvedProviderConfig {
   const selected = settings.providers[settings.provider];
 
+  let cfg: ResolvedProviderConfig;
   switch (selected.kind) {
     case 'openai':
-      return {
+      cfg = {
         endpoint: PROVIDER_ENDPOINTS.openai,
         apiKey: selected.apiKey,
         model: selected.model || 'gpt-4o-mini',
         provider: 'openai',
       };
+      break;
     case 'deepseek':
-      return {
+      cfg = {
         endpoint: PROVIDER_ENDPOINTS.deepseek,
         apiKey: selected.apiKey,
         model: selected.model || 'deepseek-v4-flash',
         provider: 'deepseek',
       };
+      break;
     case 'ollama':
-      return {
+      cfg = {
         endpoint: `${selected.ollamaUrl || 'http://localhost:11434'}/v1/chat/completions`,
         apiKey: 'ollama', // Ollama 不需要真实 key 但接口需要这个字段
         model: selected.model || 'qwen2.5:7b',
         provider: 'ollama',
       };
+      break;
     case 'custom': {
       const base = selected.baseUrl.replace(/\/+$/, '');
-      return {
+      cfg = {
         endpoint: base ? `${base}/chat/completions` : '',
         apiKey: selected.apiKey,
         model: selected.model,
         provider: 'custom',
       };
+      break;
     }
   }
+
+  // OpenAI / DeepSeek 必须有 key；Ollama 用哨兵值；自定义接口允许空（本地代理可无鉴权）
+  if ((cfg.provider === 'openai' || cfg.provider === 'deepseek') && !cfg.apiKey.trim()) {
+    throw new Error('未配置 API Key，请先在设置页 ⚙️ 填写并保存');
+  }
+  return cfg;
 }
 
 interface CallAPIOptions {
@@ -142,9 +153,10 @@ export async function sendReport(
   stats: SessionStats,
   settings: AppSettings,
   customPrompt: CustomPrompt | null,
+  source: 'recording' | 'pasted' = 'recording',
 ): Promise<string> {
   const config = resolveProviderConfig(settings);
-  const prompt = getReportPrompt(fullText, stats, customPrompt);
+  const prompt = getReportPrompt(fullText, stats, customPrompt, source);
 
   const messages: ChatMessage[] = [
     { role: 'system', content: prompt.system },

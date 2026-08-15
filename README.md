@@ -13,6 +13,7 @@
 - 🔍 **词库分析**：自动检测填充词、犹豫词、笼统词，给出精准替代
 - 🤖 **AI反馈**：支持 OpenAI / DeepSeek / Ollama / 自定义兼容接口多后端
 - 📊 **分析报告**：6维度深度分析（逻辑/直接性/填充词/密度/词汇/亮点）
+- 🕘 **训练历史**：每次训练自动入库（时间/文本/分析结果），独立窗口浏览、导出、删除（存储于 `userData/training-history.json`）
 
 ## 安装
 
@@ -35,26 +36,26 @@ npm install
 
 ### 2. 加载语音识别模型
 
-应用使用 Sherpa-ONNX 的 streaming paraformer 中英双语模型（约 226 MB）。
+应用使用 Sherpa-ONNX 的 streaming paraformer-large 中文模型（全精度 fp32，约 865 MB）。
 
 **推荐：应用内一键加载** —— 启动后点击右上角 ⚙️ 进入设置页，在「本地离线语音模型」处点击「加载」，应用会自动从国内镜像下载到用户数据目录（`~/Library/Application Support/宇宙无敌表达训练/models/`）。
 
 **备选：手动下载到项目 `models/` 目录**（开发 / 离线部署）：
 
 ```bash
-cd models && mkdir -p sherpa-onnx-streaming-paraformer-bilingual-zh-en && cd sherpa-onnx-streaming-paraformer-bilingual-zh-en
-BASE="https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-bilingual-zh-en/resolve/main"
-curl -L -C - -o encoder.int8.onnx "$BASE/encoder.int8.onnx"
-curl -L -C - -o decoder.int8.onnx "$BASE/decoder.int8.onnx"
+cd models && mkdir -p sherpa-onnx-streaming-paraformer-zh && cd sherpa-onnx-streaming-paraformer-zh
+BASE="https://hf-mirror.com/csukuangfj/sherpa-onnx-streaming-paraformer-zh/resolve/main"
+curl -L -C - -o encoder.onnx "$BASE/encoder.onnx"
+curl -L -C - -o decoder.onnx "$BASE/decoder.onnx"
 curl -L -C - -o tokens.txt "$BASE/tokens.txt"
 ```
 
 模型就绪后的目录结构（三处文件齐全即视为已加载）：
 ```
 models/
-└── sherpa-onnx-streaming-paraformer-bilingual-zh-en/
-    ├── encoder.int8.onnx
-    ├── decoder.int8.onnx
+└── sherpa-onnx-streaming-paraformer-zh/
+    ├── encoder.onnx
+    ├── decoder.onnx
     └── tokens.txt
 ```
 ### 3. 启动应用
@@ -79,12 +80,14 @@ npm start
 
 ## 使用说明
 
-1. **首次使用**：点右上角 ⚙️ → 设置页「本地离线语音模型」→「加载」，下载语音模型（约 226MB）
+1. **首次使用**：点右上角 ⚙️ → 设置页「本地离线语音模型」→「加载」，下载语音模型（全精度 fp32，约 865MB）
 2. **点击「开始录制」** → 对着麦克风说话（若模型未加载，会提示并自动打开设置页）
 3. **实时字幕**会在屏幕中央显示你说的内容
 4. **左侧面板**实时统计填充词/犹豫词/笼统词
 5. **右侧面板**每50字会给出AI实时反馈
 6. **说完后点击「结束」** → 可以点「生成报告」获取完整分析
+7. **每次训练自动入库**：点「结束」（录音）或粘贴逐字稿分析完成时，时间/文本/分析结果会自动保存到训练历史（🕘 按钮查看），**无需手动保存**；完整记录（含分析报告）可在历史页导出为 Markdown
+8. **录制中每 30 秒自动保存草稿**：崩溃/误关窗口最多丢 30 秒内容；草稿在历史中标记「🕘 草稿」，点「结束」后同一条记录自动定型为正式记录，报告也写进这条
 
 ## 字幕颜色含义
 
@@ -112,15 +115,10 @@ npm start
 
 ## 词库说明
 
-`data/emotion-lexicon.json` 基于大连理工情感词库7大类结构，包含：
+词库分两部分，均可修改后重启生效：
 
-- **130+ 情绪词**：分类（喜怒哀惧恶惊）+ 强度（1-9）
-- **笼统词→精准词映射**：25组高频替代建议
-- **填充词表**：24个常见口头禅
-- **犹豫词表**：19个弱化表达
-- **程度词梯度**：弱→中→强→极 四级
-- **画面化描述**：10组「抽象→具象」转换
-- **犹豫→直接转换**：8组对照示例
+- **`data/emotion-lexicon.json`**：情绪词库（基于大连理工 7 大类情感词库精选），146 个情绪词，含分类（喜怒哀惧恶惊）、强度（1-9）与正负极，用于情绪词检测。
+- **`data/tiered-lexicon.json`**：笼统词→精准词替换库（9 大类 100 组高频替代），是笼统词检测与字幕高亮的唯一数据源；填充词表（25 个常见口头禅）与犹豫词表（19 个弱化表达）定义在 `src/shared/lexicon-data.ts`，主进程分析与渲染进程高亮共用，杜绝词表漂移。
 
 ## 开发
 
@@ -144,11 +142,12 @@ npm run dev
 ├── src/
 │   ├── main/main.ts        # Electron 主进程
 │   ├── preload.ts          # preload 脚本
-│   ├── shared/             # 共享类型 + IPC 契约
-│   ├── lib/                # asr / lexicon / ai-feedback / prompts / model-manager
-│   └── renderer/           # 渲染进程（app.ts / settings.ts / *.html / styles.css）
+│   ├── shared/             # 共享类型 + IPC 契约 + 词库数据源
+│   ├── lib/                # asr / lexicon / ai-feedback / prompts / model-manager / history
+│   └── renderer/           # 渲染进程（app / settings / history / *.html / styles.css）
 ├── data/
-│   └── emotion-lexicon.json
+│   ├── emotion-lexicon.json   # 情绪词库（运行时加载）
+│   └── tiered-lexicon.json    # 笼统词→精准词替换库（打包进主/渲染进程）
 ├── build.mjs               # esbuild 构建脚本
 ├── tsconfig.json
 └── models/                 # Sherpa-ONNX 模型（应用内加载，或手动放置）
@@ -163,7 +162,7 @@ npm run dev
 
 ## TODO
 
-- [ ] **语音识别模型待优化**：当前 Paraformer 中英双语流式模型的识别准确率不够理想，经常出现错别字/误识别；待调研并替换更优的 ASR 模型。
+- [x] **语音识别模型优化**：已从「中英双语 int8」模型切换为「纯中文 paraformer-large 全精度 fp32」模型（`sherpa-onnx-streaming-paraformer-zh`，约 865MB，4 线程），中文识别准确率明显提升。如仍遇到错别字/误识别，可继续调研 Whisper / FunASR 等方案替换。
 
 ## License
 
