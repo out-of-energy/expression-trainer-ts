@@ -14,6 +14,14 @@ const VAGUE_HIGHLIGHT_WORDS = [
 const FILLER_PATTERN = /(嗯|啊|呃|额|那个|就是|然后|这个|对吧|是吧|反正|基本上)/g;
 const HEDGE_PATTERN = /(可能|也许|大概|应该|我觉得|好像|似乎|或许|不一定|差不多|感觉)/g;
 
+/** 转义 HTML 特殊字符，防止 AI 输出里的 < > 被当作标签解析 */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 class ExpressionTrainer {
   private isRecording = false;
   private isPaused = false;
@@ -127,6 +135,7 @@ class ExpressionTrainer {
     this.pauseStart = null;
     this.fullText = '';
     this.sentences = [];
+    this.lastFeedbackText = '';
     this.resetStats();
     this.subtitleContainer.innerHTML = '';
 
@@ -290,6 +299,8 @@ class ExpressionTrainer {
     if (this.stats.totalWords > 0) {
       const density = ((this.stats.totalWords - this.stats.fillers - this.stats.hedges) / this.stats.totalWords * 100).toFixed(0);
       this.statDensity.textContent = density + '%';
+    } else {
+      this.statDensity.textContent = '--';
     }
   }
 
@@ -350,6 +361,11 @@ class ExpressionTrainer {
 
     if (result.success) {
       this.lastReport = result.data;
+      if (!result.data || !result.data.trim()) {
+        console.error('[报告] 内容为空');
+        this.reportBody.innerHTML = '<p style="color:#B03A2E;">报告内容为空，请重试</p>';
+        return;
+      }
       this.renderReport(result.data);
     } else {
       this.reportBody.innerHTML = `<p style="color:#B03A2E;">生成失败: ${result.error}</p>`;
@@ -357,23 +373,28 @@ class ExpressionTrainer {
   }
 
   private renderReport(report: string): void {
-    const html = report
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/\|(.+)\|/g, (match) => match)
-      .replace(/\n/g, '<br>');
+    try {
+      const html = escapeHtml(report)
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+        .replace(/\|(.+)\|/g, (match) => match)
+        .replace(/\n/g, '<br>');
 
-    this.reportBody.innerHTML = `
-      <div style="text-align:right;margin-bottom:12px;">
-        <button id="btn-save-report" style="background:#D97757;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;">💾 保存为 Markdown</button>
-      </div>
-      ${html}
-    `;
+      this.reportBody.innerHTML = `
+        <div style="text-align:right;margin-bottom:12px;">
+          <button id="btn-save-report" style="background:#D97757;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;">💾 保存为 Markdown</button>
+        </div>
+        ${html}
+      `;
 
-    getElement<HTMLButtonElement>('btn-save-report').addEventListener('click', () => this.saveReport());
+      getElement<HTMLButtonElement>('btn-save-report').addEventListener('click', () => this.saveReport());
+    } catch (error) {
+      console.error('[报告渲染] 失败，回退纯文本', error);
+      this.reportBody.textContent = report;
+    }
   }
 
   private async saveReport(): Promise<void> {
@@ -455,6 +476,10 @@ class ExpressionTrainer {
     this.fullText = '';
     this.sentences = [];
     this.lastReport = '';
+    this.lastFeedbackText = '';
+    this.startTime = 0;
+    this.pausedTime = 0;
+    this.pauseStart = null;
     this.subtitleContainer.innerHTML = '<div class="subtitle-line hint">点击下方按钮开始说话</div>';
     this.feedbackContent.innerHTML = '';
     this.resetStats();
