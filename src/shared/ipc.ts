@@ -11,6 +11,7 @@ import type {
   ModelStatus,
   Result,
   SessionStats,
+  TrainingRecord,
 } from './types';
 
 export const IpcChannels = {
@@ -49,6 +50,13 @@ export const IpcChannels = {
   // AI 反馈
   GetRealtimeFeedback: 'ai:feedback',
   GetFinalReport: 'ai:report',
+
+  // 历史训练记录
+  OpenHistoryWindow: 'history:open-window',
+  HistoryAdd: 'history:add',
+  HistoryList: 'history:list',
+  HistoryUpdate: 'history:update',
+  HistoryDelete: 'history:delete',
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -56,6 +64,8 @@ export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
 export interface FinalReportInput {
   fullText: string;
   stats: SessionStats;
+  /** 内容来源：录音 or 粘贴逐字稿（决定报告开头措辞） */
+  source: 'recording' | 'pasted';
 }
 
 /**
@@ -94,6 +104,18 @@ export interface IpcApi {
   getRealtimeFeedback(text: string): Promise<Result<string>>;
   getFinalReport(input: FinalReportInput): Promise<Result<string>>;
   testLLMConnection(settings: AppSettings): Promise<Result<void>>;
+
+  // 历史训练记录
+  openHistory(): Promise<void>;
+  history: {
+    /** 新增记录，返回生成的 id */
+    add(record: Omit<TrainingRecord, 'id' | 'createdAt'>): Promise<Result<string>>;
+    /** 列出全部记录（新→旧） */
+    list(): Promise<TrainingRecord[]>;
+    /** 局部更新（如补写 AI 报告） */
+    update(id: string, patch: Partial<TrainingRecord>): Promise<Result<void>>;
+    delete(id: string): Promise<Result<void>>;
+  };
 
   // 文件保存
   saveFile(content: string, filename: string): Promise<Result<string>>;

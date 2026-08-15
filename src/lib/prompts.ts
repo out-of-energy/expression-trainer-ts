@@ -101,7 +101,9 @@ export function getReportPrompt(
   fullText: string,
   stats: SessionStats,
   customPrompt: CustomPrompt | null,
+  source: 'recording' | 'pasted' = 'recording',
 ): PromptBundle {
+  const sourceLabel = source === 'pasted' ? '逐字稿' : '录音';
   const result: PromptBundle = {
     system: `你是专业中文表达教练,融合了两套核心能力:
 
@@ -123,7 +125,7 @@ export function getReportPrompt(
 
 请严格按以下结构输出报告(用markdown格式):
 
-报告开头第一句话固定为：「收到你的录音，以下是对这段表达的分析。」（如果输入是逐字稿则改为「收到你的逐字稿，以下是对这段表达的分析。」），然后空一行再开始正文。
+报告开头第一句话固定为：「收到你的${sourceLabel}，以下是对这段表达的分析。」，然后空一行再开始正文。
 
 ## 总评
 

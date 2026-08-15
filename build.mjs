@@ -35,7 +35,7 @@ await build({
 
 // ---- 渲染进程（浏览器，IIFE 供 <script> 直接加载）----
 await build({
-  entryPoints: ['src/renderer/app.ts', 'src/renderer/settings.ts'],
+  entryPoints: ['src/renderer/app.ts', 'src/renderer/settings.ts', 'src/renderer/history.ts'],
   bundle: true,
   platform: 'browser',
   format: 'iife',
@@ -50,7 +50,7 @@ const staticFiles = [
   'index.html',
   'settings.html',
   'prompt-editor.html',
-  'lexicon-playground.html',
+  'history.html',
   'styles.css',
 ];
 for (const file of staticFiles) {

@@ -10,8 +10,10 @@
       background: #FAF9F5;
       color: #1F1E1D;
       padding: 44px 36px 32px;
-      display: block;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      /* 滚动职责交给 .settings-container：body 若既滚动又是 drag 区域，滚轮会被拦截 */
+      overflow: hidden;
       -webkit-app-region: drag;
     }
 
@@ -19,6 +21,9 @@
       -webkit-app-region: no-drag;
       max-width: 420px;
       margin: 0 auto;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
     }
 
     h1 {

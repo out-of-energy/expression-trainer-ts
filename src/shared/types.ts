@@ -159,6 +159,51 @@ export interface ModelDownloadProgress {
 }
 
 // ---------------------------------------------------------------------------
+// 历史训练记录（数据库）
+// ---------------------------------------------------------------------------
+
+export interface HistoryWordCount {
+  word: string;
+  count: number;
+}
+
+export interface HistoryVagueWord extends HistoryWordCount {
+  alternatives: string[];
+}
+
+export interface HistoryEmotionWord extends HistoryWordCount {
+  category: string;
+  intensity: number;
+}
+
+export interface HistoryAnalysis {
+  totalWords: number;
+  /** 表达密度 0-100 */
+  density: number;
+  fillers: HistoryWordCount[];
+  hedges: HistoryWordCount[];
+  vagueWords: HistoryVagueWord[];
+  emotionWords: HistoryEmotionWord[];
+  suggestions: Suggestion[];
+}
+
+export interface TrainingRecord {
+  id: string;
+  /** 训练时间（ISO） */
+  createdAt: string;
+  source: 'recording' | 'pasted';
+  /** 时长（秒），粘贴逐字稿为 0 */
+  durationSec: number;
+  /** 录音文本 / 逐字稿全文 */
+  transcript: string;
+  analysis: HistoryAnalysis;
+  /** AI 报告（生成后补写进同一条记录） */
+  report?: string;
+  /** 草稿标记：录制中定时自动保存的未完成会话（结束定型后为 false/缺省） */
+  draft?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // 通用结果（IPC 返回值）
 // ---------------------------------------------------------------------------
 
